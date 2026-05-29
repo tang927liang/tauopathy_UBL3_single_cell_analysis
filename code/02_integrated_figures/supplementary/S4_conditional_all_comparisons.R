@@ -1,43 +1,51 @@
 ###############################################################################
-# Supplementary Figure S4
-# Donor-level conditional UBL3 expression for all comparisons other than the
-# three focal compartments in Figure 5.
+# 统一脚本：Figure 5 + Supplementary Figure S4（MN 投稿 unified v2 版）
 #
-#   Per analytical unit (7 sections, A-G): cell-level UBL3 density histograms
-#   (Panel A) and donor-level median strip dotplots (Panel B) for every cell
-#   type, with within-unit BH-FDR Mann-Whitney U. The three focal compartments
-#   shown in Figure 5 (syn52082747 AD/PSP V1 neurons) are excluded here.
+# 【v2 相对 v1 的改动】（修复 Section B 崩溃）
+#   报错: ! `.homonyms` must be a string or character vector.
+#   原因: patchwork 的 `wrap_plots() + plot_annotation() & theme()` 这套写法
+#         在同一 R session 里第 2 次调用会触发 vctrs/patchwork 主题合并 bug
+#         （与 ragg 'res' 锁死同类的状态污染问题）。v1 在 Stage A 用 cowplot
+#         跑通 Figure 5 + Stage B Section A 用 patchwork 也跑通，但 Section B
+#         作为 patchwork 的第二次调用就翻车。
+#   修法: Stage B 的 section 组装全部改用 cowplot::plot_grid()，删掉所有
+#         patchwork::plot_annotation() 和 `&` 操作。section 标题用
+#         cowplot::ggdraw() + draw_label() 渲染；A/B 标签直接用 plot_grid 的
+#         labels 参数。这样 Stage A 和 Stage B 都只用 cowplot 组装，状态干净。
+#   其他逻辑保持 v1 不变（共享主题 / 函数 / 调色板 / descriptive 处理 /
+#   稳健 PNG 导出 / 缓存）。
 #
-# NOTE: this figure was numbered 'S3' in earlier drafts; it is Supplementary
-#       Figure S4 in the current manuscript. Output filenames use S4.
+# 【v1 设计目标】（保持不变）
+#   - 同一份 hist_theme / dot_theme（base_size = 7.5）
+#   - 同一份 palette_groups（AD=#E69F00 / Control=#56B4E9 / FTD=#009E73 / PSP=#CC79A7）
+#   - 同一份 make_hist() / make_dot()（descriptive: n<4 自动显示 "Descriptive only"）
+#   - 同一份 binwidth（0.15）/ point size（1.8）/ shape（圆点带描边）/ Arial 字体
+#   - syn52082747 两阶段共享缓存
+#   - 稳健 PNG 导出（grDevices::png type="cairo" + tryCatch + safe_close_all_devices）
 #
-# Inputs  : 5 Seurat .rds objects (+ 2 syn21788402 metadata CSVs) at the
-#           data-project paths in USER_CONFIG below (confirm before running).
-# Outputs : <REPO>/output/figures/S4/ (per-section vector PDF + 1000 dpi PNG,
-#           a merged multi-page vector PDF, and a stitched 1000 dpi PNG).
-# MN specs: 170 mm wide, <=225 mm tall per page, vector cairo_pdf (fonts
-#           embedded) + 1000 dpi PNG, line widths >0.25 pt, colourblind-safe,
-#           supplementary file-size limit 20 MB.
+# 【输出】
+#   Figure 5 → D:/RNA/MNversion submission/Figure 5.../Results/
+#     - Figure5_MN_unified_1000dpi.png
+#     - Figure5_MN_unified_vector.pdf
+#   Supp Fig S4 → D:/RNA/MNversion submission/Supplementary Figure S4.../Results2/
+#     - SuppS4_SectionA-G_{cohort}_{disease}_1000dpi.png  (7 个)
+#     - SuppS4_SectionA-G_{cohort}_{disease}_vector.pdf   (7 个)
+#     - Supplementary_Figure_S4_MN_unified_ALL_vector.pdf  ← 投稿主用
+#     - Supplementary_Figure_S4_MN_unified_ALL_1000dpi.png
 ###############################################################################
 
 rm(list = ls()); gc()
 SEED <- 20251023; set.seed(SEED)
-
-# --- Paths -------------------------------------------------------------------
-# REPO : repository root; figure outputs go under here (same as Fig2-Fig4 / S3).
-# Input Seurat objects and metadata CSVs are read from their data-project
-# locations below; those are source data and are left unchanged.
-REPO <- "D:/RNA/Code/UBL3_tauopathy"
 Sys.setenv(LANG = "en"); options(stringsAsFactors = FALSE)
 
-# ★ v3 新增：magick 加入自动安装清单
-for (pkg in c("lemon", "ggtext", "cowplot", "magick")) {
+for (pkg in c("lemon", "ggtext", "cowplot", "magick", "patchwork")) {
   if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg)
 }
 suppressPackageStartupMessages({
   library(Seurat); library(SeuratObject); library(Matrix)
   library(dplyr);  library(ggplot2);      library(ragg)
   library(grid);   library(lemon);        library(ggtext); library(cowplot)
+  library(patchwork)   # 仍然加载（合并多页 PDF 时可能用），但 section 组装不再用
   library(org.Hs.eg.db); library(AnnotationDbi)
 })
 if (.Platform$OS.type == "windows") {
@@ -46,8 +54,36 @@ if (.Platform$OS.type == "windows") {
 }
 
 ###############################################################################
-# =====================  USER CONFIG (已根据你脚本填好)  ========================
-# 如有路径需要改，只改这块
+# 0. 输出目录
+###############################################################################
+FIG5_DIR <- "D:/RNA/MNversion submission/Figure 5. Donor-level conditional UBL3 expression preserves baseline magnitude across tauopathies/Results"
+SUPS4_DIR <- "D:/RNA/MNversion submission/Supplementary Figure S4. negative overlap and dotplot/Results2"
+dir.create(FIG5_DIR,  showWarnings = FALSE, recursive = TRUE)
+dir.create(SUPS4_DIR, showWarnings = FALSE, recursive = TRUE)
+
+###############################################################################
+# 1. 共享参数
+###############################################################################
+gene_symbol     <- "UBL3"
+compare_ctrl    <- "Control"
+binwidth_use    <- 0.15
+png_dpi         <- 1000
+base_fontfamily <- "Arial"
+
+MIN_DONORS_PER_GROUP <- 1
+DOT_POINT_SIZE       <- 1.8
+
+palette_groups  <- c("AD"="#E69F00", "Control"="#56B4E9",
+                     "FTD"="#009E73", "PSP"="#CC79A7")
+
+all_celltype_levels <- c("Astrocytes","Endothelial","Excitatory neurons",
+                         "Inhibitory neurons","Microglia","Oligodendrocytes")
+
+ctrl_alias <- c("Control","CTRL","Ctr","CTR","NC","Normal","N",
+                "control","ctrl","ctr","nc","normal")
+
+###############################################################################
+# 2. cohort 配置
 ###############################################################################
 USER_CONFIG <- list(
   syn52082747 = list(
@@ -92,43 +128,8 @@ USER_CONFIG <- list(
   )
 )
 
-# 7-section 定义
-sections_config <- list(
-  A = list(cohort_key="GSE157827",       disease="AD",  region="Middle frontal gyrus",
-           excluded_celltypes = character(0)),
-  B = list(cohort_key="GSE174367",       disease="AD",  region="Prefrontal cortex",
-           excluded_celltypes = character(0)),
-  C = list(cohort_key="syn52082747",     disease="AD",  region="Primary visual cortex (V1)",
-           excluded_celltypes = c("Excitatory neurons")),  # 阳性→Fig 5
-  D = list(cohort_key="syn21788402_EC",  disease="AD",  region="Entorhinal cortex",
-           excluded_celltypes = character(0)),
-  E = list(cohort_key="syn21788402_SFG", disease="AD",  region="Superior frontal gyrus",
-           excluded_celltypes = character(0)),
-  F = list(cohort_key="syn52082747",     disease="FTD", region="Primary visual cortex (V1)",
-           excluded_celltypes = character(0)),
-  G = list(cohort_key="syn52082747",     disease="PSP", region="Primary visual cortex (V1)",
-           excluded_celltypes = c("Excitatory neurons","Inhibitory neurons"))  # 阳性→Fig 5
-)
-
-out_dir <- file.path(REPO, "output", "figures", "S4")
-dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
-
 ###############################################################################
-# 通用参数
-###############################################################################
-gene_symbol     <- "UBL3"
-compare_ctrl    <- "Control"
-binwidth_use    <- 0.15
-png_dpi         <- 1000
-base_fontfamily <- "Arial"
-palette_groups  <- c("AD"="#E69F00","Control"="#56B4E9","FTD"="#009E73","PSP"="#CC79A7")
-all_celltype_levels <- c("Astrocytes","Endothelial","Excitatory neurons",
-                         "Inhibitory neurons","Microglia","Oligodendrocytes")
-ctrl_alias <- c("Control","CTRL","Ctr","CTR","NC","Normal","N",
-                "control","ctrl","ctr","nc","normal")
-
-###############################################################################
-# 工具函数（与 Fig 5 一致）
+# 3. 共享工具函数
 ###############################################################################
 normalize_celltype6 <- function(x) {
   x <- trimws(as.character(x))
@@ -198,10 +199,23 @@ locate_gene_row <- function(counts_mat, gene_symbol) {
   stop(paste0("counts 行名中找不到基因：", gene_symbol))
 }
 
+safe_close_all_devices <- function() {
+  while (!is.null(dev.list())) {
+    try(dev.off(), silent = TRUE)
+  }
+}
+
 ###############################################################################
-# Cohort loader：处理 2 种数据来源模式
+# 4. 共享 cohort loader（带缓存）
 ###############################################################################
+cohort_cache <- list()
+
 load_cohort_df <- function(cohort_key) {
+  if (!is.null(cohort_cache[[cohort_key]])) {
+    message(sprintf("  ▶ 命中缓存: %s", cohort_key))
+    return(cohort_cache[[cohort_key]])
+  }
+  
   cfg <- USER_CONFIG[[cohort_key]]
   stopifnot(file.exists(cfg$rds_path))
   
@@ -211,13 +225,11 @@ load_cohort_df <- function(cohort_key) {
   md$cell_id <- colnames(obj)
   rownames(md) <- md$cell_id
   
-  # 列名自动识别
   ct_col  <- intersect(cfg$ct_col_pref,  colnames(md))[1]
   don_col <- intersect(cfg$don_col_pref, colnames(md))[1]
   stopifnot(!is.na(ct_col), !is.na(don_col))
   
   if (cfg$use_csv) {
-    # ====== Pattern B: 外部 CSV 映射 sample→group ======
     join_key <- intersect(cfg$join_key_pref, colnames(md))[1]
     stopifnot(!is.na(join_key), file.exists(cfg$meta_csv))
     
@@ -242,13 +254,11 @@ load_cohort_df <- function(cohort_key) {
     md1$donor     <- trimws(as.character(md1[[don_col]]))
     
     keep <- !is.na(md1$group_std) & md1$group_std != "" &
-            !is.na(md1$celltype6) & !is.na(md1$donor) & md1$donor != ""
+      !is.na(md1$celltype6) & !is.na(md1$donor) & md1$donor != ""
     md1 <- md1[keep, , drop = FALSE]
     cells_keep <- md1$cell_id
-    
     obj_meta <- md1
   } else {
-    # ====== Pattern A: obj@meta.data 直接有 group ======
     grp_col <- intersect(cfg$grp_col_pref, colnames(md))[1]
     stopifnot(!is.na(grp_col))
     
@@ -258,20 +268,19 @@ load_cohort_df <- function(cohort_key) {
     md$donor <- trimws(as.character(md[[don_col]]))
     
     keep <- !is.na(md$group_std) & md$group_std != "" &
-            !is.na(md$celltype6) & !is.na(md$donor) & md$donor != ""
+      !is.na(md$celltype6) & !is.na(md$donor) & md$donor != ""
     md1 <- md[keep, , drop = FALSE]
     cells_keep <- md1$cell_id
     obj_meta <- md1
   }
   
-  # 计算 UBL3 表达
   counts_mat <- get_counts_matrix_allcells(obj, assay = "RNA")
   gene_row   <- locate_gene_row(counts_mat, gene_symbol)
   j_keep     <- match(cells_keep, colnames(counts_mat))
   cm_sub     <- counts_mat[, j_keep, drop = FALSE]
   lib_size   <- Matrix::colSums(cm_sub)
   expr_vec   <- log1p((as.numeric(cm_sub[gene_row, , drop = TRUE]) /
-                        pmax(lib_size, 1)) * 1e4)
+                         pmax(lib_size, 1)) * 1e4)
   
   df <- data.frame(
     expr = expr_vec, donor = obj_meta$donor, group = obj_meta$group_std,
@@ -279,6 +288,8 @@ load_cohort_df <- function(cohort_key) {
   )
   message(sprintf("    Cells loaded: %d | celltype col=%s | donor col=%s",
                   nrow(df), ct_col, don_col))
+  rm(obj, counts_mat, cm_sub, md); gc()
+  cohort_cache[[cohort_key]] <<- df
   df
 }
 
@@ -301,49 +312,49 @@ compute_fdr_table <- function(df_all, disease) {
 }
 
 ###############################################################################
-# Themes (较 Fig 5 略紧凑因 supp 多面板)
+# 5. 共享 themes
 ###############################################################################
-hist_theme <- theme_bw(base_size = 7.0, base_family = base_fontfamily) +
+hist_theme <- theme_bw(base_size = 7.5, base_family = base_fontfamily) +
   theme(
-    plot.title       = element_text(face = "bold", size = 7.2, hjust = 0,
+    plot.title       = element_text(face = "bold", size = 7.8, hjust = 0,
                                     margin = margin(b = 2)),
-    axis.title.x     = element_text(size = 6.6, margin = margin(t = 2)),
-    axis.title.y     = element_text(size = 6.6, margin = margin(r = 2)),
-    axis.text        = element_text(size = 6.0, colour = "black"),
+    axis.title.x     = element_text(size = 7.2, margin = margin(t = 2)),
+    axis.title.y     = element_text(size = 7.2, margin = margin(r = 2)),
+    axis.text        = element_text(size = 6.6, colour = "black"),
     axis.ticks       = element_line(colour = "black", linewidth = 0.30),
-    panel.border     = element_rect(colour = "grey35", fill = NA, linewidth = 0.30),
-    panel.grid.major = element_line(colour = "grey92", linewidth = 0.20),
+    panel.border     = element_rect(colour = "grey35", fill = NA, linewidth = 0.35),
+    panel.grid.major = element_line(colour = "grey92", linewidth = 0.22),
     panel.grid.minor = element_blank(),
     legend.position  = "bottom", legend.direction = "horizontal",
-    legend.title     = element_blank(), legend.text = element_text(size = 6.2),
-    legend.key.width = unit(0.6,"lines"), legend.key.height = unit(0.6,"lines"),
-    legend.margin    = margin(t = -3, b = 0),
-    plot.margin      = margin(t = 3, r = 4, b = 1, l = 3)
+    legend.title     = element_blank(), legend.text = element_text(size = 6.8),
+    legend.key.width = unit(0.7,"lines"), legend.key.height = unit(0.7,"lines"),
+    legend.margin    = margin(t = -2, b = 0),
+    plot.margin      = margin(t = 4, r = 5, b = 2, l = 4)
   )
 
-dot_theme <- theme_bw(base_size = 7.0, base_family = base_fontfamily) +
+dot_theme <- theme_bw(base_size = 7.5, base_family = base_fontfamily) +
   theme(
-    plot.title       = element_text(face = "bold", size = 7.2, hjust = 0,
+    plot.title       = element_text(face = "bold", size = 7.8, hjust = 0,
                                     margin = margin(b = 2)),
-    plot.subtitle    = element_text(face = "italic", size = 6.4, colour = "grey25",
-                                    hjust = 0, margin = margin(b = 2)),
+    plot.subtitle    = element_text(face = "italic", size = 7.0, colour = "grey25",
+                                    hjust = 0, margin = margin(b = 3)),
     axis.title.x     = element_blank(),
-    axis.title.y     = element_text(size = 6.6, margin = margin(r = 3)),
-    axis.text.x      = element_text(size = 6.4, colour = "black"),
-    axis.text.y      = element_text(size = 6.2, colour = "black"),
+    axis.title.y     = element_text(size = 7.2, margin = margin(r = 3)),
+    axis.text.x      = element_text(size = 7.0, colour = "black"),
+    axis.text.y      = element_text(size = 6.8, colour = "black"),
     axis.ticks       = element_line(colour = "black", linewidth = 0.30),
-    panel.border     = element_rect(colour = "grey35", fill = NA, linewidth = 0.30),
-    panel.grid.major = element_line(colour = "grey92", linewidth = 0.20),
+    panel.border     = element_rect(colour = "grey35", fill = NA, linewidth = 0.35),
+    panel.grid.major = element_line(colour = "grey92", linewidth = 0.22),
     panel.grid.minor = element_blank(),
     legend.position  = "bottom", legend.direction = "horizontal",
-    legend.title     = element_blank(), legend.text = element_text(size = 6.2),
-    legend.key.width = unit(0.6,"lines"), legend.key.height = unit(0.6,"lines"),
-    legend.margin    = margin(t = -3, b = 0),
-    plot.margin      = margin(t = 3, r = 4, b = 1, l = 3)
+    legend.title     = element_blank(), legend.text = element_text(size = 6.8),
+    legend.key.width = unit(0.7,"lines"), legend.key.height = unit(0.7,"lines"),
+    legend.margin    = margin(t = -2, b = 0),
+    plot.margin      = margin(t = 4, r = 5, b = 2, l = 4)
   )
 
 ###############################################################################
-# Sub-plot 生成函数（注入 section 内统一 Y 范围）
+# 6. 共享 sub-plot 生成函数
 ###############################################################################
 make_hist <- function(df_pair, disease, celltype, y_max_shared) {
   if (nrow(df_pair) == 0) return(NULL)
@@ -357,13 +368,13 @@ make_hist <- function(df_pair, disease, celltype, y_max_shared) {
   
   ggplot() +
     geom_histogram(data = df_ctrl,
-      aes(x = expr, y = after_stat(density), fill = lab_ctl, color = lab_ctl),
-      binwidth = binwidth_use, position = "identity",
-      alpha = 0.92, linewidth = 0.20, boundary = 0, closed = "left") +
+                   aes(x = expr, y = after_stat(density), fill = lab_ctl, color = lab_ctl),
+                   binwidth = binwidth_use, position = "identity",
+                   alpha = 0.92, linewidth = 0.20, boundary = 0, closed = "left") +
     geom_histogram(data = df_dis,
-      aes(x = expr, y = after_stat(density), fill = lab_dis, color = lab_dis),
-      binwidth = binwidth_use, position = "identity",
-      alpha = 0.78, linewidth = 0.20, boundary = 0, closed = "left") +
+                   aes(x = expr, y = after_stat(density), fill = lab_dis, color = lab_dis),
+                   binwidth = binwidth_use, position = "identity",
+                   alpha = 0.78, linewidth = 0.20, boundary = 0, closed = "left") +
     scale_fill_manual(values = setNames(c("white","grey65"), c(lab_dis, lab_ctl)),
                       breaks = c(lab_dis, lab_ctl)) +
     scale_color_manual(values = setNames(c("black","grey40"), c(lab_dis, lab_ctl)),
@@ -385,7 +396,13 @@ make_dot <- function(donor_median, disease, celltype, fdr_value, y_lim_shared) {
   n_ctl <- sum(donor_median$group == compare_ctrl)
   lab_dis <- sprintf("%s (n=%d)", disease, n_dis)
   lab_ctl <- sprintf("%s (n=%d)", compare_ctrl, n_ctl)
-  fdr_str <- if (is.finite(fdr_value)) sprintf("MWU FDR = %.2e", fdr_value) else "MWU FDR = NA"
+  
+  is_descriptive <- (n_dis < 4 || n_ctl < 4)
+  if (is_descriptive) {
+    fdr_str <- sprintf("Descriptive only (n = %d vs %d)", n_dis, n_ctl)
+  } else {
+    fdr_str <- if (is.finite(fdr_value)) sprintf("MWU FDR = %.2e", fdr_value) else "MWU FDR = NA"
+  }
   
   summary_bars <- donor_median %>%
     group_by(group) %>%
@@ -405,7 +422,7 @@ make_dot <- function(donor_median, disease, celltype, fdr_value, y_lim_shared) {
     geom_point(data = donor_median,
                aes(x = group, y = median_expr, fill = group),
                position = position_jitter(width = 0.14, height = 0, seed = SEED),
-               size = 1.6, shape = 21, stroke = 0.30,
+               size = DOT_POINT_SIZE, shape = 21, stroke = 0.30,
                colour = "black", alpha = 0.92) +
     scale_fill_manual(values = palette_groups,
                       breaks = c(disease, compare_ctrl),
@@ -419,209 +436,354 @@ make_dot <- function(donor_median, disease, celltype, fdr_value, y_lim_shared) {
     dot_theme
 }
 
-###############################################################################
-# 计算 section 内的统一 Y 范围
-###############################################################################
-compute_section_y_limits <- function(df_all, disease, ct_list, binwidth) {
-  y_max_hist <- 0
-  dot_vals <- numeric(0)
-  for (ct in ct_list) {
-    df_pair <- df_all %>%
-      filter(group %in% c(disease, compare_ctrl),
-             celltype == ct, expr > 0)
-    if (nrow(df_pair) < 2) next
+compute_hist_y_max <- function(hist_data_list, binwidth) {
+  y_max_all <- 0
+  for (df_pair in hist_data_list) {
+    if (is.null(df_pair) || nrow(df_pair) == 0) next
     for (grp in unique(df_pair$group)) {
       x_sub <- df_pair$expr[df_pair$group == grp]
       if (length(x_sub) < 2) next
       h <- hist(x_sub,
                 breaks = seq(0, ceiling(max(x_sub)/binwidth)*binwidth + binwidth, by = binwidth),
                 plot = FALSE)
-      y_max_hist <- max(y_max_hist, h$density, na.rm = TRUE)
+      y_max_all <- max(y_max_all, h$density, na.rm = TRUE)
     }
-    donor_med <- df_pair %>%
-      group_by(donor, group) %>%
-      summarise(median_expr = median(expr), .groups = "drop")
-    dot_vals <- c(dot_vals, donor_med$median_expr)
   }
-  
-  if (y_max_hist <= 0) y_max_hist <- 1
-  y_max_hist <- ceiling(y_max_hist * 10) / 10 * 1.05
-  
-  if (length(dot_vals) > 0) {
-    dot_min <- min(dot_vals, na.rm = TRUE)
-    dot_max <- max(dot_vals, na.rm = TRUE)
-    dot_range <- dot_max - dot_min
-    dot_lim <- c(dot_min - dot_range * 0.08, dot_max + dot_range * 0.12)
-  } else {
-    dot_lim <- c(0, 1)
-  }
-  
-  list(hist_y_max = y_max_hist, dot_y_lim = dot_lim)
+  if (y_max_all <= 0) y_max_all <- 1
+  ceiling(y_max_all * 10) / 10 * 1.05
+}
+
+compute_dot_y_lim <- function(dot_data_list) {
+  all_vals <- unlist(lapply(dot_data_list,
+                            function(d) if (is.null(d)) NULL else d$median_expr))
+  if (length(all_vals) == 0) return(c(0, 1))
+  v_min <- min(all_vals, na.rm = TRUE)
+  v_max <- max(all_vals, na.rm = TRUE)
+  v_range <- v_max - v_min
+  if (v_range <= 0) v_range <- max(abs(v_max), 1)
+  c(v_min - v_range * 0.08, v_max + v_range * 0.12)
+}
+
+save_png_pdf <- function(plot_obj, png_path, pdf_path, w_in, h_in, dpi) {
+  safe_close_all_devices()
+  png_ok <- tryCatch({
+    grDevices::png(filename = png_path, width = w_in, height = h_in,
+                   units = "in", res = dpi, type = "cairo", bg = "white")
+    print(plot_obj); dev.off()
+    TRUE
+  }, error = function(e) {
+    message(sprintf("  ⚠ PNG 导出失败 (%s)，ggsave 兜底", conditionMessage(e)))
+    safe_close_all_devices()
+    tryCatch({
+      ggsave(png_path, plot_obj, width = w_in, height = h_in,
+             units = "in", dpi = dpi, bg = "white")
+      TRUE
+    }, error = function(e2) { safe_close_all_devices(); FALSE })
+  })
+  safe_close_all_devices()
+  pdf_ok <- tryCatch({
+    if (capabilities("cairo")) {
+      ggsave(pdf_path, plot_obj, width = w_in, height = h_in,
+             units = "in", device = cairo_pdf, bg = "white")
+    } else {
+      ggsave(pdf_path, plot_obj, width = w_in, height = h_in,
+             units = "in", device = "pdf", bg = "white")
+    }
+    TRUE
+  }, error = function(e) {
+    message(sprintf("  ⚠ PDF 导出失败: %s", conditionMessage(e)))
+    safe_close_all_devices(); FALSE
+  })
+  safe_close_all_devices(); gc()
+  c(png = png_ok, pdf = pdf_ok)
 }
 
 ###############################################################################
-# 主循环：逐 section 处理 + 保存
+# v2 新增：section page 组装函数（纯 cowplot，无 patchwork &）
+# 把 hist_list + dot_list + section 标题组装成一页完整 section page
 ###############################################################################
-section_pages <- list()
-cohort_cache  <- list()  # 缓存 df_all 避免重复读 RDS
-
-for (section_letter in names(sections_config)) {
-  scfg <- sections_config[[section_letter]]
+build_section_page_cowplot <- function(hist_list, dot_list, hdr_text,
+                                       font_family = base_fontfamily) {
+  # 左列：垂直堆叠所有 histogram
+  left_col  <- cowplot::plot_grid(plotlist = unname(hist_list),
+                                  ncol = 1, align = "v")
+  # 右列：垂直堆叠所有 dotplot
+  right_col <- cowplot::plot_grid(plotlist = unname(dot_list),
+                                  ncol = 1, align = "v")
   
-  message(sprintf("\n========== Section %s: %s | %s | %s ==========",
-                  section_letter, scfg$cohort_key, scfg$disease, scfg$region))
-  
-  if (is.null(cohort_cache[[scfg$cohort_key]])) {
-    cohort_cache[[scfg$cohort_key]] <- load_cohort_df(scfg$cohort_key)
-  }
-  df_all <- cohort_cache[[scfg$cohort_key]]
-  
-  ct_to_plot <- setdiff(all_celltype_levels, scfg$excluded_celltypes)
-  ct_to_plot <- intersect(ct_to_plot, levels(df_all$celltype))
-  
-  fdr_tbl <- compute_fdr_table(df_all, scfg$disease)
-  
-  ylim <- compute_section_y_limits(df_all, scfg$disease, ct_to_plot, binwidth_use)
-  message(sprintf("  📐 Section Y range: hist [0, %.3f], dot [%.3f, %.3f]",
-                  ylim$hist_y_max, ylim$dot_y_lim[1], ylim$dot_y_lim[2]))
-  
-  hist_list <- list(); dot_list  <- list()
-  for (ct in ct_to_plot) {
-    df_pair <- df_all %>%
-      filter(group %in% c(scfg$disease, compare_ctrl),
-             celltype == ct, expr > 0)
-    if (nrow(df_pair) == 0) next
-    
-    donor_med <- df_pair %>%
-      group_by(donor, group) %>%
-      summarise(median_expr = median(expr), .groups = "drop")
-    
-    fdr_val <- fdr_tbl$padj[as.character(fdr_tbl$celltype) == ct]
-    if (length(fdr_val) == 0) fdr_val <- NA_real_
-    
-    h <- make_hist(df_pair, scfg$disease, ct, ylim$hist_y_max)
-    d <- make_dot (donor_med, scfg$disease, ct, fdr_val, ylim$dot_y_lim)
-    if (!is.null(h)) hist_list[[ct]] <- h
-    if (!is.null(d)) dot_list[[ct]]  <- d
-  }
-  if (length(hist_list) == 0) {
-    message("  ⚠ Section ", section_letter, " 没有数据可画")
-    next
-  }
-  
-  panel_A <- plot_grid(plotlist = hist_list, ncol = 1, align = "v")
-  panel_B <- plot_grid(plotlist = dot_list,  ncol = 1, align = "v")
-  
-  hdr_text <- sprintf("Section %s. %s — %s (%s)",
-                      section_letter, scfg$cohort_key, scfg$disease, scfg$region)
-  header <- ggdraw() +
-    draw_label(hdr_text, x = 0.02, hjust = 0,
-               fontfamily = base_fontfamily, fontface = "bold", size = 8.5)
-  
-  section_body <- plot_grid(
-    panel_A, panel_B, ncol = 2,
-    labels = c("A","B"),
+  # 2 列并排 + A/B 标签（沿用 Figure 5 的 cowplot::plot_grid 风格）
+  inner_body <- cowplot::plot_grid(
+    left_col, right_col,
+    ncol = 2,
+    labels = c("A", "B"),
     label_size = 10,
-    label_fontfamily = base_fontfamily,
+    label_fontfamily = font_family,
     label_fontface = "bold",
-    label_x = 0.01, label_y = 0.995,
+    label_x = 0.01, label_y = 0.998,
     hjust = 0, vjust = 1,
     rel_widths = c(1, 1)
   )
   
-  section_page <- plot_grid(header, section_body, ncol = 1,
-                            rel_heights = c(0.035, 1))
+  # 顶部 section 标题（cowplot::ggdraw + draw_label，避开 patchwork plot_annotation）
+  title_grob <- cowplot::ggdraw() +
+    cowplot::draw_label(
+      hdr_text,
+      fontfamily = font_family, fontface = "bold", size = 8.5,
+      x = 0.02, hjust = 0, y = 0.5
+    )
+  
+  # 标题在顶 + 内容在下
+  cowplot::plot_grid(
+    title_grob, inner_body,
+    ncol = 1,
+    rel_heights = c(0.04, 0.96)
+  )
+}
+
+
+###############################################################################
+# =============================================================================
+# STAGE A：Figure 5
+# =============================================================================
+###############################################################################
+message("\n\n#############################################################")
+message("# STAGE A: Figure 5 — Donor-level conditional UBL3 expression")
+message("#############################################################")
+
+positive_set <- list(
+  list(disease = "AD",  celltype = "Excitatory neurons"),
+  list(disease = "PSP", celltype = "Excitatory neurons"),
+  list(disease = "PSP", celltype = "Inhibitory neurons")
+)
+
+df_v1 <- load_cohort_df("syn52082747")
+fdr_AD  <- compute_fdr_table(df_v1, "AD")
+fdr_PSP <- compute_fdr_table(df_v1, "PSP")
+fdr_lookup <- list(AD = fdr_AD, PSP = fdr_PSP)
+
+hist_data_f5 <- list()
+dot_data_f5  <- list()
+for (cfg in positive_set) {
+  key <- paste0(cfg$disease, "_", cfg$celltype)
+  df_pair <- df_v1 %>%
+    filter(group %in% c(cfg$disease, compare_ctrl),
+           celltype == cfg$celltype, expr > 0)
+  hist_data_f5[[key]] <- df_pair
+  
+  donor_med <- df_pair %>%
+    group_by(donor, group) %>%
+    summarise(median_expr = median(expr), .groups = "drop")
+  dot_data_f5[[key]] <- donor_med
+}
+
+hist_y_max_f5 <- compute_hist_y_max(hist_data_f5, binwidth_use)
+dot_y_lim_f5  <- compute_dot_y_lim(dot_data_f5)
+message(sprintf("📐 Figure 5 Y 范围: hist [0, %.3f], dot [%.3f, %.3f]",
+                hist_y_max_f5, dot_y_lim_f5[1], dot_y_lim_f5[2]))
+
+hist_plots_f5 <- list(); dot_plots_f5 <- list()
+for (i in seq_along(positive_set)) {
+  cfg <- positive_set[[i]]
+  key <- paste0(cfg$disease, "_", cfg$celltype)
+  fdr_tbl <- fdr_lookup[[cfg$disease]]
+  this_fdr <- fdr_tbl$padj[as.character(fdr_tbl$celltype) == cfg$celltype]
+  if (length(this_fdr) == 0) this_fdr <- NA_real_
+  message(sprintf("  📌 row %d: %s — %s | BH FDR = %.3e",
+                  i, cfg$disease, cfg$celltype, this_fdr))
+  hist_plots_f5[[i]] <- make_hist(hist_data_f5[[key]], cfg$disease, cfg$celltype, hist_y_max_f5)
+  dot_plots_f5[[i]]  <- make_dot (dot_data_f5[[key]],  cfg$disease, cfg$celltype, this_fdr, dot_y_lim_f5)
+}
+
+panel_A_f5 <- cowplot::plot_grid(hist_plots_f5[[1]], hist_plots_f5[[2]], hist_plots_f5[[3]],
+                                 ncol = 1, align = "v")
+panel_B_f5 <- cowplot::plot_grid(dot_plots_f5[[1]], dot_plots_f5[[2]], dot_plots_f5[[3]],
+                                 ncol = 1, align = "v")
+fig5 <- cowplot::plot_grid(
+  panel_A_f5, panel_B_f5,
+  ncol = 2,
+  labels = c("A", "B"),
+  label_size = 10,
+  label_fontfamily = base_fontfamily,
+  label_fontface = "bold",
+  label_x = 0.01, label_y = 0.995,
+  hjust = 0, vjust = 1,
+  rel_widths = c(1, 1)
+)
+
+fig5_w_mm <- 170; fig5_h_mm <- 180
+fig5_w_in <- fig5_w_mm / 25.4; fig5_h_in <- fig5_h_mm / 25.4
+
+fig5_png <- file.path(FIG5_DIR, "Figure5_MN_unified_1000dpi.png")
+fig5_pdf <- file.path(FIG5_DIR, "Figure5_MN_unified_vector.pdf")
+
+status_f5 <- save_png_pdf(fig5, fig5_png, fig5_pdf, fig5_w_in, fig5_h_in, png_dpi)
+if (all(status_f5)) {
+  message(sprintf("  ✅ Figure 5 saved (%dmm × %dmm) → %s",
+                  fig5_w_mm, fig5_h_mm, FIG5_DIR))
+} else {
+  message("  ⚠ Figure 5 部分导出失败")
+}
+
+
+###############################################################################
+# =============================================================================
+# STAGE B：Supplementary Figure S4（7 sections，纯 cowplot 组装）
+# =============================================================================
+###############################################################################
+message("\n\n#############################################################")
+message("# STAGE B: Supplementary Figure S4 — comprehensive coverage")
+message("#############################################################")
+
+sections_config <- list(
+  A = list(cohort_key="GSE157827",       disease="AD",  region="Middle frontal gyrus",
+           excluded_celltypes = character(0)),
+  B = list(cohort_key="GSE174367",       disease="AD",  region="Prefrontal cortex",
+           excluded_celltypes = character(0)),
+  C = list(cohort_key="syn52082747",     disease="AD",  region="Primary visual cortex (V1)",
+           excluded_celltypes = c("Excitatory neurons")),
+  D = list(cohort_key="syn21788402_EC",  disease="AD",  region="Entorhinal cortex",
+           excluded_celltypes = character(0)),
+  E = list(cohort_key="syn21788402_SFG", disease="AD",  region="Superior frontal gyrus",
+           excluded_celltypes = character(0)),
+  F = list(cohort_key="syn52082747",     disease="FTD", region="Primary visual cortex (V1)",
+           excluded_celltypes = character(0)),
+  G = list(cohort_key="syn52082747",     disease="PSP", region="Primary visual cortex (V1)",
+           excluded_celltypes = c("Excitatory neurons","Inhibitory neurons"))
+)
+
+section_pages <- list()
+
+for (section_letter in names(sections_config)) {
+  scfg <- sections_config[[section_letter]]
+  message(sprintf("\n========== Section %s: %s | %s | %s ==========",
+                  section_letter, scfg$cohort_key, scfg$disease, scfg$region))
+  
+  df_all <- load_cohort_df(scfg$cohort_key)
+  ct_to_plot <- setdiff(all_celltype_levels, scfg$excluded_celltypes)
+  ct_to_plot <- intersect(ct_to_plot, levels(df_all$celltype))
+  fdr_tbl <- compute_fdr_table(df_all, scfg$disease)
+  
+  hist_data_sec <- list(); dot_data_sec <- list()
+  for (ct in ct_to_plot) {
+    df_pair <- df_all %>%
+      filter(group %in% c(scfg$disease, compare_ctrl),
+             celltype == ct, expr > 0)
+    if (nrow(df_pair) < 2) next
+    hist_data_sec[[ct]] <- df_pair
+    dot_data_sec[[ct]]  <- df_pair %>%
+      group_by(donor, group) %>%
+      summarise(median_expr = median(expr), .groups = "drop")
+  }
+  hist_y_max_sec <- compute_hist_y_max(hist_data_sec, binwidth_use)
+  dot_y_lim_sec  <- compute_dot_y_lim(dot_data_sec)
+  message(sprintf("  📐 Section Y 范围: hist [0, %.3f], dot [%.3f, %.3f]",
+                  hist_y_max_sec, dot_y_lim_sec[1], dot_y_lim_sec[2]))
+  
+  hist_list <- list(); dot_list <- list()
+  for (ct in ct_to_plot) {
+    donor_med <- dot_data_sec[[ct]]
+    if (is.null(donor_med)) next
+    n_by_grp <- table(donor_med$group)
+    has_both <- all(c(scfg$disease, compare_ctrl) %in% names(n_by_grp))
+    if (!has_both ||
+        any(n_by_grp[c(scfg$disease, compare_ctrl)] < MIN_DONORS_PER_GROUP)) {
+      message("  ⤷ skip ", ct, " (某组 donor 数不足)"); next
+    }
+    fdr_val <- fdr_tbl$padj[as.character(fdr_tbl$celltype) == ct]
+    if (length(fdr_val) == 0) fdr_val <- NA_real_
+    h <- make_hist(hist_data_sec[[ct]], scfg$disease, ct, hist_y_max_sec)
+    d <- make_dot (donor_med, scfg$disease, ct, fdr_val, dot_y_lim_sec)
+    if (!is.null(h) && !is.null(d)) {
+      hist_list[[ct]] <- h
+      dot_list[[ct]]  <- d
+    }
+  }
+  if (length(hist_list) == 0) {
+    message("  ⚠ Section ", section_letter, " 没有数据可画"); next
+  }
+  
+  # cohort_key 末尾的 _EC/_SFG 后缀不进标题展示
+  cohort_display <- sub("_(EC|SFG)$", "", scfg$cohort_key)
+  hdr_text <- sprintf("Section %s. %s — %s (%s)",
+                      section_letter, cohort_display, scfg$disease, scfg$region)
+  
+  # ====== v2 关键：用 cowplot 组装 section page（不再用 patchwork & ）======
+  section_page <- build_section_page_cowplot(hist_list, dot_list, hdr_text,
+                                             font_family = base_fontfamily)
   section_pages[[section_letter]] <- section_page
   
-  n_rows <- length(hist_list)
+  n_rows    <- length(hist_list)
   page_w_mm <- 170
-  page_h_mm <- min(225, 22 + n_rows * 32)
+  page_h_mm <- min(225, 22 + n_rows * 33)
   page_w_in <- page_w_mm / 25.4
   page_h_in <- page_h_mm / 25.4
   
-  png_path <- file.path(out_dir,
-    sprintf("SuppS4_Section%s_%s_%s_1000dpi.png",
-            section_letter, scfg$cohort_key, scfg$disease))
-  pdf_path <- file.path(out_dir,
-    sprintf("SuppS4_Section%s_%s_%s_vector.pdf",
-            section_letter, scfg$cohort_key, scfg$disease))
+  png_path <- file.path(SUPS4_DIR,
+                        sprintf("SuppS4_Section%s_%s_%s_1000dpi.png",
+                                section_letter, scfg$cohort_key, scfg$disease))
+  pdf_path <- file.path(SUPS4_DIR,
+                        sprintf("SuppS4_Section%s_%s_%s_vector.pdf",
+                                section_letter, scfg$cohort_key, scfg$disease))
   
-  ragg::agg_png(png_path, width = page_w_in, height = page_h_in,
-                units = "in", res = png_dpi, background = "white")
-  print(section_page); dev.off()
-  
-  if (capabilities("cairo")) {
-    ggsave(pdf_path, section_page, width = page_w_in, height = page_h_in,
-           units = "in", device = cairo_pdf, bg = "white")
+  status_sec <- save_png_pdf(section_page, png_path, pdf_path,
+                             page_w_in, page_h_in, png_dpi)
+  if (all(status_sec)) {
+    message(sprintf("  ✅ Saved: %s (%dmm × %.0fmm)",
+                    basename(pdf_path), page_w_mm, page_h_mm))
   } else {
-    ggsave(pdf_path, section_page, width = page_w_in, height = page_h_in,
-           units = "in", device = "pdf", bg = "white")
+    message("  ⚠ Section ", section_letter, " 部分导出失败")
   }
-  message("  ✅ Saved: ", basename(pdf_path),
-          sprintf(" (%dmm × %.0fmm)", page_w_mm, page_h_mm))
 }
 
-###############################################################################
-# 合并多页 PDF（所有 sections 一文件，矢量）
-###############################################################################
-all_pdf <- file.path(out_dir, "SupplementaryFigureS4_MN_v3_ALL_vector.pdf")
+# ============ 合并多页 PDF + 1000dpi PNG ============
+all_pdf <- file.path(SUPS4_DIR, "Supplementary_Figure_S4_MN_unified_ALL_vector.pdf")
+safe_close_all_devices()
 if (length(section_pages) > 0 && capabilities("cairo")) {
-  cairo_pdf(all_pdf, width = 170/25.4, height = 225/25.4,
-            onefile = TRUE, family = base_fontfamily)
-  for (sl in names(section_pages)) print(section_pages[[sl]])
-  dev.off()
-  message("\n🎉 多页合并 PDF: ", all_pdf)
+  tryCatch({
+    cairo_pdf(all_pdf, width = 170/25.4, height = 225/25.4,
+              onefile = TRUE, family = base_fontfamily)
+    for (sl in names(section_pages)) print(section_pages[[sl]])
+    dev.off()
+    message("\n🎉 Supp S4 合并多页 PDF: ", all_pdf)
+  }, error = function(e) {
+    message("\n⚠ 合并 PDF 失败: ", conditionMessage(e))
+    safe_close_all_devices()
+  })
 }
 
-###############################################################################
-# ★ v3 新增：合并 1000dpi PNG（垂直拼接已生成的 section PNG）
-###############################################################################
-all_png <- file.path(out_dir, "SupplementaryFigureS4_MN_v3_ALL_1000dpi.png")
-
+all_png <- file.path(SUPS4_DIR, "Supplementary_Figure_S4_MN_unified_ALL_1000dpi.png")
 if (requireNamespace("magick", quietly = TRUE) && length(section_pages) > 0) {
-  message("\n🔧 用 magick 拼接合并 1000dpi PNG ...")
-  
-  # 按 A→G 顺序取出已生成的 section PNG
-  png_files_all <- list.files(out_dir,
-    pattern = "^SuppS4_Section[A-G]_.*_1000dpi\\.png$", full.names = TRUE)
+  message("🔧 用 magick 拼接合并 1000dpi PNG ...")
+  png_files_all <- list.files(SUPS4_DIR,
+                              pattern = "^SuppS4_Section[A-G]_.*_1000dpi\\.png$", full.names = TRUE)
   letters_found <- sub("^SuppS4_Section([A-G]).*$", "\\1", basename(png_files_all))
   png_files_all <- png_files_all[order(letters_found)]
-  
   if (length(png_files_all) > 0) {
     imgs <- magick::image_read(png_files_all)
     combined_img <- magick::image_append(imgs, stack = TRUE)
     info <- magick::image_info(combined_img)
-    
     magick::image_write(combined_img, path = all_png,
                         format = "png", density = "1000x1000", quality = 100)
-    
     size_mb <- file.size(all_png) / 1024 / 1024
-    message(sprintf("🎉 合并总图 PNG: %s", all_png))
-    message(sprintf("   尺寸: %d × %d px (@1000dpi → %.0f × %.0f mm)",
-                    info$width, info$height,
-                    info$width * 25.4 / 1000, info$height * 25.4 / 1000))
-    message(sprintf("   文件大小: %.2f MB", size_mb))
-    
+    message(sprintf("🎉 Supp S4 合并总图 PNG: %s (%.2f MB)", all_png, size_mb))
     if (size_mb > 20) {
-      message("   ⚠ 超过 MN supp 单文件 20 MB 上限")
-      message("   → 投稿时建议改用矢量 PDF (极小, 完美无损)")
-      message("   → 本 PNG 留作本地存档/快速浏览用")
+      message("   ⚠ 超过 MN 20 MB 上限，投稿用矢量 PDF")
     } else {
-      message("   ✅ 文件大小符合 MN supp 20 MB 上限")
+      message("   ✅ 符合 MN 20 MB 上限")
     }
-  } else {
-    message("⚠ 未找到 section PNG, 跳过合并 PNG 生成")
   }
-} else {
-  message("\n⚠ magick 包不可用, 跳过合并 PNG 生成")
 }
 
 ###############################################################################
 # 最终总结
 ###############################################################################
-message("\n✅ 完成。所有 Supp S4 文件保存在：\n   ", out_dir)
-message("   - SuppS4_SectionX_<cohort>_<disease>_1000dpi.png  (各 section, 1000dpi)")
-message("   - SuppS4_SectionX_<cohort>_<disease>_vector.pdf   (各 section, 矢量 PDF)")
-message("   - SupplementaryFigureS4_MN_v3_ALL_vector.pdf      (合并多页 PDF, 矢量)")
-message("   - SupplementaryFigureS4_MN_v3_ALL_1000dpi.png     (合并总图 PNG, 1000dpi)")
-
+message("\n\n=============================================================")
+message("✅ 全部完成（v2，纯 cowplot 组装）。两张图保存在：")
+message("  Figure 5    : ", FIG5_DIR)
+message("    - Figure5_MN_unified_1000dpi.png")
+message("    - Figure5_MN_unified_vector.pdf")
+message("  Supp Fig S4 : ", SUPS4_DIR)
+message("    - SuppS4_SectionA-G_{cohort}_{disease}_1000dpi.png / vector.pdf")
+message("    - Supplementary_Figure_S4_MN_unified_ALL_vector.pdf  ← 投稿主用")
+message("    - Supplementary_Figure_S4_MN_unified_ALL_1000dpi.png")
+message("=============================================================\n")
