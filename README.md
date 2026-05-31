@@ -18,28 +18,43 @@ intermediate objects are not stored here.
 ```
 UBL3_tauopathy/
 ├─ code/
-│  ├─ 01_per_dataset/                  # per-dataset preprocessing -> harmonized celltype6 objects
-│  │  ├─ GSE157827/   GSE157827_preprocess.R          (from raw 10x; AD, middle frontal gyrus)
-│  │  ├─ GSE174367/   GSE174367_preprocess.R          (from raw h5;  AD, prefrontal cortex)
-│  │  ├─ syn21788402/ syn21788402_preprocess.R        (EC + SFG; author SCE -> 6 classes, OPC->Oligo)
-│  │  │               syn21788402_celltype6_umap.R    (per-dataset UMAP/analysis)
-│  │  │               README_provenance.md            (provenance + method note)
-│  │  └─ syn52082747/ syn52082747_preprocess.R        (AD/PSP/FTD, V1; author object -> 6 classes)
+│  ├─ 01_per_dataset/                # per-dataset preprocessing -> harmonized celltype6 objects
+│  │  ├─ GSE157827/                  # from raw 10x; AD, middle frontal gyrus
+│  │  │  ├─ GSE157827_upstream_to_stepH_obj_celltype6.named.R
+│  │  │  ├─ README.md
+│  │  │  └─ sessionInfo.txt
+│  │  ├─ GSE174367/                  # from raw h5; AD, prefrontal cortex
+│  │  │  ├─ reproduce_GSE174367_stepH_obj_celltype6.named.R
+│  │  │  ├─ stepH_celltype6_done_sessionInfo.txt
+│  │  │  └─ README.md
+│  │  ├─ syn21788402/                # EC + SFG; author SCE -> 6 classes, OPC->Oligo
+│  │  │  ├─ github_rebuild_stepH_syn21788402_part1.R
+│  │  │  ├─ github_rebuild_stepH_syn21788402_part2.R
+│  │  │  ├─ sessionInfo_stepH_reconstruct.txt
+│  │  │  └─ README_stepH_rebuild.md
+│  │  └─ syn52082747/                # AD/PSP/FTD, V1; author object -> 6 classes
+│  │     ├─ make_syn52082747_stepH_slim_object.R
+│  │     ├─ sessionInfo_stepH.txt
+│  │     └─ README.md
 │  └─ 02_integrated_figures/
-│     ├─ 00_stats_tables/   Data1_pseudobulk_DESeq2.R, S1_detection_breadth.R,
-│     │                     S2_housekeeping_baseline.R, S3_SUMO_comparator.R, S4_robustness/
-│     ├─ main/              Fig1_workflow.R, Fig2_S3_celltype_UBL3.R,
-│     │                     Fig3_detection_breadth.R, Fig4_robustness_sensitivity.R,
-│     │                     Fig5_conditional_expression.R
-│     └─ supplementary/     S1_donor_redundancy.R, S2_processing_pipeline.R,
-│                           S4_conditional_all_comparisons.R, S5_SUMO_comparator.R
-├─ data/                    # empty placeholders (GSE157827/ GSE174367/ syn21788402/ syn52082747/);
-│                           # raw data are obtained from the public accessions below
+│     ├─ 00_stats_tables/
+│     │  Data1_pseudobulk_DEseq2.R, S1_detection_breadth.R,
+│     │  S2_housekeeping_baseline.R, S3_SUMO_comparator.R, S4_robustness/
+│     ├─ main/
+│     │  Fig1_workflow.R, Fig2_S3_celltype_UBL3.R,
+│     │  Fig3_detection_breadth.R, Fig4_robustness_sensitivity.R,
+│     │  Fig5_conditional_expression.R
+│     └─ supplementary/
+│        S1_donor_redundancy.R, S2_processing_pipeline.R,
+│        S4_conditional_all_comparisons.R, S5_SUMO_comparator.R
+├─ data/
+│  # empty placeholders (GSE157827/ GSE174367/ syn21788402/ syn52082747/);
+│  # raw data are obtained from the public accessions below
 ├─ output/
-│  ├─ figures/              Fig1..Fig5, S1..S5   (figure scripts write here)
-│  └─ stats_tables/         Data1_pseudobulk_DESeq2, S1_detection_breadth,
-│                           S2_housekeeping_baseline, S3_SUMO_comparator, S4_robustness
-└─ sessionInfo/             # R session logs for reproducibility
+│  ├─ figures/        Fig1..Fig5, S1..S5  (figure scripts write here)
+│  └─ stats_tables/   Data1_pseudobulk_DEseq2, S1_detection_breadth,
+│                     S2_housekeeping_baseline, S3_SUMO_comparator, S4_robustness
+└─ sessionInfo/        # R session logs for reproducibility
 ```
 
 Note: Supplementary Figure S3 is produced together with Figure 2 by
