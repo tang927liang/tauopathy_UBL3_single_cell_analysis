@@ -1,6 +1,0 @@
-object_id	accession	analytical_unit	file_name	md5	status	notes
-GSE157827_stepH	GSE157827	AD_MFG	stepH_obj_celltype6_named.rds	TO_BE_ADDED	archive_in_zenodo	Processed Seurat object consumed by integrated analyses.
-GSE174367_stepH	GSE174367	AD_PFC	stepH_obj_celltype6_named.rds	TO_BE_ADDED	archive_in_zenodo	Processed Seurat object consumed by integrated analyses.
-syn21788402_EC_stepH	syn21788402	AD_EC	stepH_syn21788402_EC_obj_labeled_celltype7_celltype6.rds	TO_BE_ADDED	archive_in_zenodo	Processed Seurat object; n=3 vs 3 analytical unit.
-syn21788402_SFG_stepH	syn21788402	AD_SFG	stepH_syn21788402_SFG_obj_celltype6.rds	TO_BE_ADDED	archive_in_zenodo	Processed Seurat object; n=3 vs 3 analytical unit.
-syn52082747_stepH	syn52082747	AD_PSP_FTD_V1	stepH_slim_uncompressed.rds	3f8c89bd11b467bf3c9f3de78362817f	archive_in_zenodo	Reproduced byte-identical to the historical manuscript object; 590541 cells and 30309 genes.
