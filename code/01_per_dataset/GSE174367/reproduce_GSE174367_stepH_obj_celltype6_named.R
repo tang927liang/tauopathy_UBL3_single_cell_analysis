@@ -11,6 +11,7 @@
 #
 # Default input folder for reviewers:
 #   ./data/GSE174367
+#
 # Default output folder:
 #   ./results/GSE174367_stepH
 #
@@ -21,12 +22,12 @@
 # For a fast local rerun from an existing StepF object:
 #   Sys.setenv(GSE174367_STEPF_RDS = "D:/codex/174367/stepF_afterPCA_graph_umap_res0.8_dims1_20_GSE174367.rds")
 #
-# Historical environment:
-#   R 4.4.3
-#   Seurat 4.3.0
-#   SeuratObject 5.2.0
-#   Matrix 1.7-4
-#   data.table 1.17.8
+# Verified successful reproduction environment:
+#   R 4.5.3
+#   Seurat 5.4.0
+#   SeuratObject 5.3.0
+#   Matrix 1.7-5
+#   data.table 1.18.0
 ###############################################################################
 
 SEED <- 20251023

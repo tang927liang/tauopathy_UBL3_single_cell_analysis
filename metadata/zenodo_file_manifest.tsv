@@ -1,0 +1,7 @@
+file_name	content_type	approx_size	md5	notes
+stepH_slim_uncompressed.rds	processed_Seurat_object	28.01_GiB	3f8c89bd11b467bf3c9f3de78362817f	syn52082747 harmonized object; upload to Zenodo, not GitHub.
+stepH_obj_celltype6_named_GSE157827.rds	processed_Seurat_object	TO_BE_ADDED	TO_BE_ADDED	Upload to Zenodo if required for downstream reproducibility.
+stepH_obj_celltype6_named_GSE174367.rds	processed_Seurat_object	TO_BE_ADDED	TO_BE_ADDED	Upload to Zenodo if required for downstream reproducibility.
+stepH_syn21788402_EC_obj_labeled_celltype7_celltype6.rds	processed_Seurat_object	TO_BE_ADDED	TO_BE_ADDED	Upload to Zenodo if required for downstream reproducibility.
+stepH_syn21788402_SFG_obj_celltype6.rds	processed_Seurat_object	TO_BE_ADDED	TO_BE_ADDED	Upload to Zenodo if required for downstream reproducibility.
+Supplementary_Data_1.xlsx	large_supplementary_spreadsheet	about_92_MB	TO_BE_ADDED	Too large for BMC additional-file limit; upload to Zenodo or split if needed.

@@ -26,14 +26,14 @@ large public data files.
 
 ## Software Environment
 
-Historical environment used for the manuscript rerun:
+Verified successful reproduction environment:
 
 ```text
-R 4.4.3
-Seurat 4.3.0
-SeuratObject 5.2.0
-Matrix 1.7-4
-data.table 1.17.8
+R 4.5.3
+Seurat 5.4.0
+SeuratObject 5.3.0
+Matrix 1.7-5
+data.table 1.18.0
 SEED = 20251023
 ```
 

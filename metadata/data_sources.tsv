@@ -1,0 +1,8 @@
+accession	repository	region	disease_groups	included_in_inferential_analysis	notes
+GSE157827	GEO	Middle frontal gyrus	AD, Control	yes	Included dataset; harmonized to six cell types.
+GSE174367	GEO	Prefrontal cortex	AD, Control	yes	Included dataset; harmonized to six cell types.
+syn21788402	Synapse	Entorhinal cortex	AD, Control	yes_descriptive_n3v3	Included analytical unit; n=3 vs 3 and treated as descriptive where specified.
+syn21788402	Synapse	Superior frontal gyrus	AD, Control	yes_descriptive_n3v3	Included analytical unit; n=3 vs 3 and treated as descriptive where specified.
+syn52082747	Synapse	Primary visual cortex	AD, PSP, Pick disease/FTD, Control	yes	Included dataset; AD, PSP, and FTD/PiD analyzed as separate disease-vs-control units.
+GSE155114	GEO	CTE screened dataset	CTE, Control	no	Screened but not included in the inferential analysis set.
+GSE261807	GEO	CTE screened dataset	CTE, Control	no	Screened but not included in the inferential analysis set.

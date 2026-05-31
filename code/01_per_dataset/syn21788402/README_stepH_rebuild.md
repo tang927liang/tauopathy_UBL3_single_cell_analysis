@@ -119,6 +119,25 @@ This additionally compares key metadata columns, `clusterCellType -> celltype6`
 maps, reductions, UMAP/CCA embeddings, and sparse RNA `counts`/`data` matrix
 shape and sums.
 
+## Manuscript Table 2 Reporting Note
+
+For Table 2, these objects should be described as author-processed SCE objects
+with this-study six-class harmonization, not as newly Louvain-clustered objects.
+The deposited SCE files already contain `clusterAssignment`, `clusterCellType`,
+and `CCA.ALIGNED`; the rebuild scripts copy those fields and rerun UMAP from all
+64 `CCA.ALIGNED` dimensions. They do not rerun `FindClusters()`.
+
+Recommended Table 2 values for this reconstructed object set:
+
+```text
+Cells post-QC: 42,528 / 63,608 (EC / SFG)
+Integration: author SCAlign; inherited CCA.ALIGNED
+Dims/PCs: 64 CCA.ALIGNED dimensions
+Resolution: N/A; inherited clusterAssignment
+Clusters: 13 / 18 inherited clusterAssignment levels (EC / SFG)
+R / Seurat: 4.5.3 / 5.5.0
+```
+
 The downstream Supplementary Fig. S5 SUMO-by-celltype smoke test using the
 rebuilt syn21788402 objects is:
 

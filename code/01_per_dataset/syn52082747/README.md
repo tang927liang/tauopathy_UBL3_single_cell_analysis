@@ -45,6 +45,26 @@ manuscript object:
 D:/codex/52082747/stepH_slim_uncompressed.rds
 ```
 
+## Manuscript Table 2 Reporting Note
+
+The script starts from the author-provided processed Seurat object
+`NO2_step7_obj_original_backup.rds`, then adds harmonized `group4`,
+`celltype6`, UBL3 log1p(CP10K), audit tables, and the slim uncompressed RDS.
+It does not rerun the source publication's integration, dimensional reduction,
+or clustering. Therefore Table 2 should mark those fields as source/inherited
+rather than this-study clustering parameters.
+
+Recommended Table 2 values for this reconstructed object:
+
+```text
+Cells post-QC: 590,541
+Integration: source Seurat/Azimuth object, inherited
+Dims/PCs: 1-100 source/inherited
+Resolution: 0.1 source/inherited
+Clusters: 178 inherited
+R / Seurat: 4.4.3 / 5.4.0
+```
+
 ## Run
 
 ```bash
