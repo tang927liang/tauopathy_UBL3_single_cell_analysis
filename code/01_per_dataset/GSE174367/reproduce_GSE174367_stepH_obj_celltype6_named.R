@@ -11,7 +11,6 @@
 #
 # Default input folder for reviewers:
 #   ./data/GSE174367
-#
 # Default output folder:
 #   ./results/GSE174367_stepH
 #
