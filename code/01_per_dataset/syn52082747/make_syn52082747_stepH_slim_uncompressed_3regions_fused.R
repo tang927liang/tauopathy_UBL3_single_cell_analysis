@@ -525,3 +525,378 @@ if (run_make) {
 if (run_verify) {
   verify_outputs(load_historical_object = load_hist, hash_rds = hash_rds)
 }
+
+###############################################################################
+# Route C add-on: split syn52082747 into three cortical regions and write
+# donor-level UBL3 detection-breadth source files.
+#
+# This section does not change the historical stepH reconstruction above.
+# It reads the regenerated stepH object when available, otherwise the manuscript
+# project copy in results/NO3, and writes all region-resolved outputs to:
+#   D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions
+#
+# Environment switches
+#   RUN_MAKE_3REGIONS=true|false
+#   SAVE_3REGION_SOURCE_RDS=true|false
+#   SAVE_3REGION_SEURAT_RDS=true|false
+#   SAVE_SPLIT_REGION_RDS=true|false
+#   WRITE_CELL_METADATA=true|false
+###############################################################################
+
+find_first_col <- function(md, candidates) {
+  hit <- intersect(candidates, colnames(md))
+  if (length(hit)) hit[1] else NA_character_
+}
+
+infer_region_col <- function(md) {
+  candidates <- c(
+    "region", "Region", "brain_region", "BrainRegion", "tissue", "Tissue",
+    "roi", "ROI", "structure", "Structure", "dissected_region"
+  )
+  hit <- find_first_col(md, candidates)
+  if (!is.na(hit)) return(hit)
+  target <- c("calcarine", "insula", "precg", "precentral", "v1")
+  for (cn in colnames(md)) {
+    x <- tolower(trimws(as.character(md[[cn]])))
+    x <- x[!is.na(x) & nzchar(x)]
+    if (!length(x)) next
+    if (any(grepl(paste(target, collapse = "|"), unique(x)))) return(cn)
+  }
+  NA_character_
+}
+
+normalize_region3 <- function(x) {
+  z <- tolower(trimws(as.character(x)))
+  out <- rep(NA_character_, length(z))
+  out[grepl("calcarine|\\bv1\\b|visual", z)] <- "V1"
+  out[grepl("insula", z)] <- "insula"
+  out[grepl("precg|precentral|pre-central|motor", z)] <- "preCG"
+  out
+}
+
+standardize_celltype6_routeC <- function(x) {
+  z <- trimws(as.character(x))
+  z[z %in% c("Astro", "Astrocyte", "Astrocytes")] <- "Astrocytes"
+  z[z %in% c("Endo", "Endothelial", "Endothelial cells")] <- "Endothelial"
+  z[z %in% c("Excit", "Excitatory", "Excitatory neurons")] <- "Excitatory neurons"
+  z[z %in% c("Inhib", "Inhibitory", "Inhibitory neurons")] <- "Inhibitory neurons"
+  z[z %in% c("Micro", "Microgl", "Microglia")] <- "Microglia"
+  z[z %in% c("Oligo", "Oligodendrocyte", "Oligodendrocytes")] <- "Oligodendrocytes"
+  z
+}
+
+locate_ubl3_row <- function(rownames_vec) {
+  ubl3_ensg <- "ENSG00000122042"
+  rn <- rownames_vec
+  if ("UBL3" %in% rn) return("UBL3")
+  ci <- which(toupper(rn) == "UBL3")
+  if (length(ci)) return(rn[ci[1]])
+  if (ubl3_ensg %in% rn) return(ubl3_ensg)
+  ci <- which(sub("\\.\\d+$", "", rn) == ubl3_ensg)
+  if (length(ci)) return(rn[ci[1]])
+  NA_character_
+}
+
+extract_ubl3_log1p_cp10k <- function(obj, assay = "RNA") {
+  DefaultAssay(obj) <- assay
+  rna <- obj[[assay]]
+  layers <- tryCatch(SeuratObject::Layers(rna), error = function(e) character(0))
+  count_layers <- grep("^counts", layers, value = TRUE)
+  if (!length(count_layers)) count_layers <- "counts"
+
+  cells_all <- colnames(obj)
+  lib_size <- setNames(rep(NA_real_, length(cells_all)), cells_all)
+  ubl3_count <- setNames(rep(NA_real_, length(cells_all)), cells_all)
+  rows_used <- character(0)
+
+  for (ly in count_layers) {
+    m <- tryCatch(SeuratObject::LayerData(rna, layer = ly), error = function(e) NULL)
+    if (is.null(m) || !ncol(m)) next
+    gene_row <- locate_ubl3_row(rownames(m))
+    if (is.na(gene_row)) next
+    cn <- intersect(colnames(m), cells_all)
+    if (!length(cn)) next
+    lib_size[cn] <- Matrix::colSums(m[, cn, drop = FALSE])
+    ubl3_count[cn] <- as.numeric(m[gene_row, cn, drop = TRUE])
+    rows_used <- c(rows_used, paste0(ly, ":", gene_row))
+  }
+
+  if (!length(rows_used)) stop("UBL3 row was not found in any counts layer.", call. = FALSE)
+  expr <- log1p((ubl3_count / pmax(lib_size, 1)) * 1e4)
+  list(expr = expr, lib_size = lib_size, ubl3_count = ubl3_count, rows_used = unique(rows_used))
+}
+
+hl_shift <- function(x, y) {
+  if (!length(x) || !length(y)) return(NA_real_)
+  median(as.vector(outer(x, y, "-")), na.rm = TRUE)
+}
+
+cliffs_delta <- function(x, y) {
+  if (!length(x) || !length(y)) return(NA_real_)
+  dif <- as.vector(outer(x, y, "-"))
+  (sum(dif > 0, na.rm = TRUE) - sum(dif < 0, na.rm = TRUE)) / length(dif)
+}
+
+safe_wilcox <- function(x, y) {
+  if (length(x) < 1L || length(y) < 1L) {
+    return(list(p = NA_real_, conf.low = NA_real_, conf.high = NA_real_))
+  }
+  wt <- tryCatch(
+    stats::wilcox.test(
+      x = x, y = y, alternative = "two.sided", exact = FALSE,
+      conf.int = TRUE, conf.level = 0.95
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(wt)) return(list(p = NA_real_, conf.low = NA_real_, conf.high = NA_real_))
+  ci <- suppressWarnings(as.numeric(wt$conf.int))
+  if (length(ci) < 2L) ci <- c(NA_real_, NA_real_)
+  list(p = as.numeric(wt$p.value), conf.low = ci[1], conf.high = ci[2])
+}
+
+make_syn52082747_3regions <- function() {
+  load_required_packages(c("data.table", "dplyr"))
+  out_dir <- file.path(project_dir, "results", "3regions")
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+  redo_stepH <- file.path(redo_dir, "stepH_slim_uncompressed.rds")
+  project_stepH <- file.path(project_dir, "results", "NO3", "stepH_slim_uncompressed.rds")
+  stepH_fp <- if (isTRUE(run_make) && file.exists(redo_stepH)) {
+    redo_stepH
+  } else if (file.exists(project_stepH)) {
+    project_stepH
+  } else {
+    redo_stepH
+  }
+  if (!file.exists(stepH_fp)) stop("Cannot find stepH object: ", stepH_fp, call. = FALSE)
+
+  cat("\n========== syn52082747 Route C three-region outputs ==========\n")
+  cat("  stepH object:", stepH_fp, "\n")
+  cat("  output dir:", out_dir, "\n")
+
+  obj <- readRDS(stepH_fp)
+  DefaultAssay(obj) <- "RNA"
+  md <- obj@meta.data
+
+  donor_col <- find_first_col(md, c("autopsy_id", "donor", "Donor", "subject", "patient"))
+  group_col <- find_first_col(md, c("group4", "group", "Group", "diagnosis", "Diagnosis"))
+  ct_col <- find_first_col(md, c("celltype6", "celltype", "cell_type", "celltype6_named"))
+  region_col <- infer_region_col(md)
+  needed <- c(donor = donor_col, group = group_col, celltype = ct_col, region = region_col)
+  if (any(is.na(needed))) {
+    stop("Missing required metadata columns: ",
+         paste(names(needed)[is.na(needed)], collapse = ", "), call. = FALSE)
+  }
+  cat("  columns: ", paste(names(needed), needed, sep = "=", collapse = "; "), "\n")
+
+  ubl3 <- extract_ubl3_log1p_cp10k(obj, "RNA")
+  cat("  UBL3 rows used:", paste(ubl3$rows_used, collapse = "; "), "\n")
+
+  meta <- data.frame(
+    cell = colnames(obj),
+    donor = trimws(as.character(md[[donor_col]])),
+    group4 = trimws(as.character(md[[group_col]])),
+    region_raw = trimws(as.character(md[[region_col]])),
+    region = normalize_region3(md[[region_col]]),
+    celltype6 = standardize_celltype6_routeC(md[[ct_col]]),
+    nCount_RNA_routeC = as.numeric(ubl3$lib_size[colnames(obj)]),
+    UBL3_count = as.numeric(ubl3$ubl3_count[colnames(obj)]),
+    UBL3_log1p_CP10k = as.numeric(ubl3$expr[colnames(obj)]),
+    stringsAsFactors = FALSE
+  )
+  meta$UBL3_positive <- is.finite(meta$UBL3_log1p_CP10k) & meta$UBL3_log1p_CP10k > 0
+  meta <- meta[!is.na(meta$donor) & nzchar(meta$donor) &
+                 !is.na(meta$group4) & nzchar(meta$group4) &
+                 !is.na(meta$region) &
+                 !is.na(meta$celltype6), , drop = FALSE]
+
+  region_levels <- c("V1", "insula", "preCG")
+  ct_levels <- c("Astrocytes", "Endothelial", "Excitatory neurons",
+                 "Inhibitory neurons", "Microglia", "Oligodendrocytes")
+  meta$region <- factor(meta$region, levels = region_levels)
+  meta$celltype6 <- factor(meta$celltype6, levels = ct_levels)
+
+  overview <- meta |>
+    dplyr::count(group4, region, celltype6, name = "n_cells") |>
+    dplyr::arrange(group4, region, celltype6)
+  donor_region <- meta |>
+    dplyr::count(group4, donor, region, name = "n_cells") |>
+    dplyr::arrange(group4, donor, region)
+  donor_ct <- meta |>
+    dplyr::group_by(group4, donor, region, celltype6) |>
+    dplyr::summarise(
+      n_cells_total = dplyr::n(),
+      n_cells_ubl3pos = sum(UBL3_positive, na.rm = TRUE),
+      prop_ubl3pos = n_cells_ubl3pos / n_cells_total,
+      median_ubl3_log1p_cp10k_pos = ifelse(
+        n_cells_ubl3pos > 0,
+        median(UBL3_log1p_CP10k[UBL3_positive], na.rm = TRUE),
+        NA_real_
+      ),
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(group4, donor, region, celltype6)
+
+  diseases <- c("AD", "FTD", "PSP")
+  tests <- list()
+  for (dz in diseases) {
+    for (rg in region_levels) {
+      for (ct in ct_levels) {
+        d <- donor_ct[donor_ct$region == rg & donor_ct$celltype6 == ct &
+                        donor_ct$group4 %in% c(dz, "Control"), , drop = FALSE]
+        x <- d$prop_ubl3pos[d$group4 == dz]
+        y <- d$prop_ubl3pos[d$group4 == "Control"]
+        wt <- safe_wilcox(x, y)
+        tests[[length(tests) + 1L]] <- data.frame(
+          analytical_unit = paste("syn52082747", dz, rg, sep = "_"),
+          disease = dz,
+          control = "Control",
+          region = rg,
+          celltype6 = ct,
+          n_disease = length(x),
+          n_control = length(y),
+          mode = ifelse(length(x) >= 4L && length(y) >= 4L, "powered", "descriptive"),
+          disease_median = ifelse(length(x), median(x, na.rm = TRUE), NA_real_),
+          control_median = ifelse(length(y), median(y, na.rm = TRUE), NA_real_),
+          hl_shift = hl_shift(x, y),
+          ci_low = wt$conf.low,
+          ci_high = wt$conf.high,
+          cliffs_delta = cliffs_delta(x, y),
+          p_value = wt$p,
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  }
+  tests <- do.call(rbind, tests)
+  tests$fdr_BH6 <- NA_real_
+  for (unit in unique(tests$analytical_unit)) {
+    ix <- which(tests$analytical_unit == unit & tests$mode == "powered")
+    tests$fdr_BH6[ix] <- p.adjust(tests$p_value[ix], method = "BH")
+  }
+  tests$is_positive_BH6 <- with(tests, mode == "powered" & is.finite(fdr_BH6) &
+                                  fdr_BH6 < 0.05 & hl_shift > 0)
+  positives <- tests[tests$is_positive_BH6, , drop = FALSE]
+
+  data.table::fwrite(overview, file.path(out_dir, "syn52082747_3regions_cell_counts_by_group_region_celltype.csv"))
+  data.table::fwrite(donor_region, file.path(out_dir, "syn52082747_3regions_donor_region_cell_counts.csv"))
+  data.table::fwrite(donor_ct, file.path(out_dir, "syn52082747_3regions_donor_celltype_UBL3_detection.csv"))
+  data.table::fwrite(tests, file.path(out_dir, "syn52082747_3regions_donor_level_tests_BH6.csv"))
+  data.table::fwrite(positives, file.path(out_dir, "syn52082747_3regions_positive_within_unit_findings.csv"))
+
+  write_cell_metadata <- tolower(Sys.getenv("WRITE_CELL_METADATA", "false")) %in% c("1", "true", "yes", "y")
+  if (write_cell_metadata) {
+    data.table::fwrite(meta, file.path(out_dir, "syn52082747_3regions_cell_metadata_minimal.csv.gz"))
+  }
+
+  save_3region_source_rds <- tolower(Sys.getenv("SAVE_3REGION_SOURCE_RDS", "true")) %in% c("1", "true", "yes", "y")
+  if (save_3region_source_rds) {
+    source_payload <- list(
+      created_at = as.character(Sys.time()),
+      source_stepH = stepH_fp,
+      region_mapping = c(
+        "calcarine / V1 / visual" = "V1",
+        "insula" = "insula",
+        "preCG / precentral / motor" = "preCG"
+      ),
+      cell_metadata_minimal = meta,
+      cell_counts_by_group_region_celltype = overview,
+      donor_region_cell_counts = donor_region,
+      donor_celltype_UBL3_detection = donor_ct,
+      donor_level_tests_BH6 = tests,
+      positive_within_unit_findings = positives,
+      sessionInfo = capture.output(sessionInfo())
+    )
+    saveRDS(
+      source_payload,
+      file = file.path(out_dir, "syn52082747_3regions_routeC_source.rds"),
+      compress = "xz",
+      version = 2
+    )
+    rm(source_payload)
+    gc()
+  }
+
+  save_3region_seurat_rds <- tolower(Sys.getenv("SAVE_3REGION_SEURAT_RDS", "false")) %in% c("1", "true", "yes", "y")
+  if (save_3region_seurat_rds) {
+    cells_3region <- intersect(meta$cell, colnames(obj))
+    obj_3region <- subset(obj, cells = cells_3region)
+    idx3 <- match(colnames(obj_3region), meta$cell)
+    obj_3region$region3 <- as.character(meta$region[idx3])
+    obj_3region$region_raw_routeC <- as.character(meta$region_raw[idx3])
+    obj_3region$UBL3_log1p_CP10k_routeC <- meta$UBL3_log1p_CP10k[idx3]
+    obj_3region$UBL3_positive_routeC <- meta$UBL3_positive[idx3]
+    obj_3region$nCount_RNA_routeC <- meta$nCount_RNA_routeC[idx3]
+    saveRDS(
+      obj_3region,
+      file = file.path(out_dir, "stepH_slim_uncompressed_syn52082747_3regions_Seurat_optional.rds"),
+      compress = "xz",
+      version = 2
+    )
+    rm(obj_3region)
+    gc()
+  }
+
+  save_split_region_rds <- tolower(Sys.getenv("SAVE_SPLIT_REGION_RDS", "false")) %in% c("1", "true", "yes", "y")
+  if (save_split_region_rds) {
+    rds_dir <- file.path(out_dir, "split_region_rds_optional")
+    dir.create(rds_dir, recursive = TRUE, showWarnings = FALSE)
+    meta_cells <- split(meta$cell, meta$region)
+    for (rg in names(meta_cells)) {
+      cells_rg <- intersect(meta_cells[[rg]], colnames(obj))
+      if (!length(cells_rg)) next
+      obj_rg <- subset(obj, cells = cells_rg)
+      saveRDS(
+        obj_rg,
+        file = file.path(rds_dir, paste0("stepH_slim_uncompressed_syn52082747_", rg, ".rds")),
+        compress = "xz",
+        version = 2
+      )
+      rm(obj_rg)
+      gc()
+    }
+  }
+
+  readme <- c(
+    "syn52082747 three-region Route C outputs",
+    "",
+    paste0("Created: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S")),
+    paste0("Source stepH object: ", stepH_fp),
+    paste0("Output directory: ", out_dir),
+    "",
+    "Region mapping:",
+    "  calcarine / V1 / visual -> V1",
+    "  insula -> insula",
+    "  preCG / precentral / motor -> preCG",
+    "",
+    "Files:",
+    "  syn52082747_3regions_cell_counts_by_group_region_celltype.csv",
+    "  syn52082747_3regions_donor_region_cell_counts.csv",
+    "  syn52082747_3regions_donor_celltype_UBL3_detection.csv",
+    "  syn52082747_3regions_donor_level_tests_BH6.csv",
+    "  syn52082747_3regions_positive_within_unit_findings.csv",
+    "  syn52082747_3regions_routeC_source.rds if SAVE_3REGION_SOURCE_RDS=true",
+    "  stepH_slim_uncompressed_syn52082747_3regions_Seurat_optional.rds only if SAVE_3REGION_SEURAT_RDS=true",
+    "  split_region_rds_optional/*.rds only if SAVE_SPLIT_REGION_RDS=true",
+    "",
+    "Statistical note:",
+    "  Tests compare each disease group with Control within each region and cell type.",
+    "  BH FDR is applied within each disease-region analytical unit over six cell types.",
+    "  Rows with fewer than 4 donors per group are marked descriptive."
+  )
+  writeLines(readme, file.path(out_dir, "README_syn52082747_3regions.txt"), useBytes = TRUE)
+  log_env(out_dir, "sessionInfo_syn52082747_3regions.txt")
+
+  cat("\nThree-region Route C output summary:\n")
+  cat("  cells used:", nrow(meta), "\n")
+  cat("  donor-celltype rows:", nrow(donor_ct), "\n")
+  cat("  test rows:", nrow(tests), "\n")
+  cat("  positive BH6 rows:", nrow(positives), "\n")
+  if (nrow(positives)) print(positives[, c("analytical_unit", "celltype6", "hl_shift", "fdr_BH6")])
+  invisible(list(meta = meta, donor_celltype = donor_ct, tests = tests, positives = positives))
+}
+
+run_make_3regions <- tolower(Sys.getenv("RUN_MAKE_3REGIONS", "true")) %in% c("1", "true", "yes", "y")
+if (run_make_3regions) {
+  make_syn52082747_3regions()
+}
