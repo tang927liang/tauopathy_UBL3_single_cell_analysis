@@ -1,0 +1,8 @@
+﻿manuscript_component	stable_core_script	session_info	role
+Upstream processed objects	code/01_per_dataset/*	dataset-specific sessionInfo files	Regenerate or reconstruct harmonized six-class Seurat objects.
+Figure 2 and Supplementary Figure S3	code/01_per_dataset/syn52082747/01_syn52082747_rebuild_stepH_3regions_full_seurat.R	syn52082747_sessionInfo.txt	Provide final full region-resolved Seurat object with UMAP, marker expression and UBL3 metadata for cell-type harmonization/detectability visualizations; final layout scripts are not part of stable core archive.
+Figure 3; Figure 5; Supplementary Figure S4; Supplementary Table S1	code/02_core_statistics/01_ubl3_donor_level_endpoints.R	01_ubl3_donor_level_endpoints_sessionInfo.txt	Generate donor-level UBL3 detection-breadth and conditional-expression source tables and Supplementary Table S1.
+Figure 4; Supplementary Table S2	code/02_core_statistics/02_psp_v1_robustness_sensitivity.R	02_psp_v1_robustness_sensitivity_sessionInfo.txt	Generate PSP V1 robustness and sensitivity outputs and Supplementary Table S2.
+Supplementary Table S2 cleanup	code/02_core_statistics/02b_supplementary_table_s2_xlsx_cleanup.py	NA	Clean final Supplementary Table S2 workbook formatting.
+Supplementary Data 1	code/02_core_statistics/03_pseudobulk_deseq2_output.R	03_pseudobulk_deseq2_output_sessionInfo.txt	Generate complete donor-level pseudobulk DESeq2 output workbook.
+

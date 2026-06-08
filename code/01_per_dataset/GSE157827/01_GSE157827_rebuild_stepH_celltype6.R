@@ -1,4 +1,4 @@
-# GSE157827 upstream pipeline to stepH_obj_celltype6_named.rds.
+﻿# GSE157827 upstream pipeline to stepH_obj_celltype6_named.rds.
 #
 # This is a single-file, GitHub-ready version of the upstream workflow used to
 # regenerate the manuscript object:
@@ -9,7 +9,7 @@
 # labels. Parameters match the manuscript rerun used for downstream validation.
 #
 # Typical rerun from the merged Seurat object:
-#   Rscript GSE157827_upstream_to_stepH_obj_celltype6_named.R
+#   Rscript 01_GSE157827_rebuild_stepH_celltype6.R
 #
 # Verified shortcut from an existing StepF object:
 #   set START_FROM_STEPF=true and STEPF_RDS=/path/to/stepF_cluster_umap_v2.rds
@@ -774,3 +774,4 @@ log_env(output_dir, "stepH_celltype6_done")
 
 cat("\nCompleted GSE157827 upstream pipeline.\n")
 cat("Final object:", final_rds, "\n")
+

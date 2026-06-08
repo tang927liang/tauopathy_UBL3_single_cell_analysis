@@ -1,4 +1,4 @@
-# syn52082747 region-resolved StepH reconstruction
+﻿# syn52082747 region-resolved StepH reconstruction
 
 This folder contains the syn52082747 dataset-level upstream code used in the final Route C analysis of the UBL3 tauopathy single-nucleus RNA-seq study.
 
@@ -6,7 +6,7 @@ The original manuscript used syn52082747 as a single V1 analytical unit. In the 
 
 ## Main script for the final analysis
 
-- `make_syn52082747_stepH_slim_uncompressed_3regions_full_seurat.R`
+- `01_syn52082747_rebuild_stepH_3regions_full_seurat.R`
 
 This is the script to cite as the main syn52082747 upstream reconstruction for the final manuscript. It reads the historical syn52082747 StepH Seurat object, preserves the RNA assay, counts/data matrices and UMAP reduction, normalizes source region labels to the Route C region labels, and writes a full region-resolved Seurat object:
 
@@ -99,7 +99,7 @@ syn52082747_3regions_full_seurat_donor_counts_by_disease_region.csv
 
 ## Which README/sessionInfo is authoritative?
 
-For GitHub, use this `README.md` and `sessionInfo_stepH.txt`.
+For GitHub, use this `README.md` and `sessionInfo.txt`.
 
 In the local results folder, the two README/sessionInfo pairs have different meanings:
 

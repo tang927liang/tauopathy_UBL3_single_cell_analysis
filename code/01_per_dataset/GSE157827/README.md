@@ -1,4 +1,4 @@
-# GSE157827 upstream reproducibility pipeline
+﻿# GSE157827 upstream reproducibility pipeline
 
 This repository contains the upstream R workflow used to regenerate the
 manuscript-ready Seurat object:
@@ -10,7 +10,7 @@ CCA integration, PCA/UMAP/clustering, and final six-cell-type annotation.
 
 ## Files
 
-- `GSE157827_upstream_to_stepH_obj_celltype6_named.R`: single-file upstream pipeline.
+- `01_GSE157827_rebuild_stepH_celltype6.R`: single-file upstream pipeline.
 - `sessionInfo.txt`: R session information from the verified rerun environment.
 
 Large generated objects (`*.rds`, `*.qs`) are intentionally excluded from GitHub.
@@ -53,7 +53,7 @@ From an existing StepF object:
 $env:START_FROM_STEPF='true'
 $env:STEPF_RDS='D:/path/to/stepF_cluster_umap_v2.rds'
 $env:OUTPUT_DIR='D:/path/to/output'
-Rscript --vanilla GSE157827_upstream_to_stepH_obj_celltype6_named.R
+Rscript --vanilla 01_GSE157827_rebuild_stepH_celltype6.R
 ```
 
 From the merged object:
@@ -61,7 +61,7 @@ From the merged object:
 ```powershell
 $env:MERGED_RDS='D:/path/to/GSE157827_merged_with_group.rds'
 $env:OUTPUT_DIR='D:/path/to/output'
-Rscript --vanilla GSE157827_upstream_to_stepH_obj_celltype6_named.R
+Rscript --vanilla 01_GSE157827_rebuild_stepH_celltype6.R
 ```
 
 ## Expected final cell counts
@@ -87,3 +87,4 @@ stepH_obj_celltype6_named.rds
 
 Set `DRY_RUN_NO_SAVE=true` to verify the annotation and count checks without
 writing the large final RDS.
+

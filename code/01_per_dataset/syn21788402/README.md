@@ -1,4 +1,4 @@
-# syn21788402 StepH Rebuild
+﻿# syn21788402 StepH Rebuild
 
 This folder contains the cleaned reproduction code for generating the two
 stepH Seurat objects used by the manuscript:
@@ -7,7 +7,7 @@ stepH Seurat objects used by the manuscript:
 - `redo/SFG/stepH_syn21788402_SFG_obj_celltype6.rds`
 
 The implementation is organized from the first section of
-`D:/codex/21788402/redo/syn21788402 全程代码.docx`.
+`D:/codex/21788402/redo/syn21788402 蜈ｨ遞倶ｻ｣遐・docx`.
 
 ## Inputs
 
@@ -69,8 +69,8 @@ For GitHub/code-deposition use, the two target objects are also provided as
 standalone one-file scripts that do not source `00_config.R`:
 
 ```powershell
-& 'C:/Program Files/R/R-4.5.3/bin/Rscript.exe' redo/scripts/github_rebuild_stepH_syn21788402_EC_from_raw.R
-& 'C:/Program Files/R/R-4.5.3/bin/Rscript.exe' redo/scripts/github_rebuild_stepH_syn21788402_SFG_from_raw.R
+& 'C:/Program Files/R/R-4.5.3/bin/Rscript.exe' redo/scripts/01_syn21788402_EC_rebuild_stepH_celltype6.R
+& 'C:/Program Files/R/R-4.5.3/bin/Rscript.exe' redo/scripts/02_syn21788402_SFG_rebuild_stepH_celltype6.R
 ```
 
 Each standalone script starts from the corresponding raw SCE file, copies
@@ -97,7 +97,7 @@ raw S4-slot extractor to access the same `counts`, `logcounts`, `colData`, and
 
 The rebuild script writes the target RDS files, session info, and small QC CSVs:
 
-- `redo/sessionInfo_stepH_reconstruction.txt`
+- `redo/sessionInfo.txt`
 - `redo/EC/stepH_syn21788402_EC_celltype6_counts_percent.csv`
 - `redo/EC/stepH_syn21788402_EC_clusterCellType_to_celltype6.csv`
 - `redo/SFG/stepH_syn21788402_SFG_celltype6_counts_percent.csv`
@@ -138,15 +138,6 @@ Clusters: 13 / 18 inherited clusterAssignment levels (EC / SFG)
 R / Seurat: 4.5.3 / 5.5.0
 ```
 
-The downstream Supplementary Fig. S5 SUMO-by-celltype smoke test using the
-rebuilt syn21788402 objects is:
-
-```powershell
-& 'C:/Program Files/R/R-4.5.3/bin/Rscript.exe' redo/scripts/04_run_suppfigS5_SUMO_byCelltype_rebuilt_syn21788402.R
-powershell -ExecutionPolicy Bypass -File redo/scripts/05_compare_suppfigS5_to_original_results2.ps1
-```
-
-Outputs are written to `redo/SuppFigS5_SUMO_byCelltype_rebuilt_test`.
 
 The downstream Supplementary Fig. S3 reproduction using the rebuilt
 syn21788402 objects is:
@@ -184,3 +175,5 @@ The comparison is cell-value based rather than xlsx zip-byte based, because
 workbook package metadata and compression vary by writer. In the local check,
 all README/cohort sheet values matched the manuscript workbook exactly, with
 zero numeric difference across all sheets.
+
+

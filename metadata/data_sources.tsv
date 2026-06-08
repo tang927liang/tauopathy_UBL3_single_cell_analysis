@@ -1,8 +1,10 @@
-accession	repository	region	disease_groups	included_in_inferential_analysis	notes
-GSE157827	GEO	Middle frontal gyrus	AD, Control	yes	Included dataset; harmonized to six cell types.
-GSE174367	GEO	Prefrontal cortex	AD, Control	yes	Included dataset; harmonized to six cell types.
-syn21788402	Synapse	Entorhinal cortex	AD, Control	yes_descriptive_n3v3	Included analytical unit; n=3 vs 3 and treated as descriptive where specified.
-syn21788402	Synapse	Superior frontal gyrus	AD, Control	yes_descriptive_n3v3	Included analytical unit; n=3 vs 3 and treated as descriptive where specified.
-syn52082747	Synapse	Primary visual cortex	AD, PSP, Pick disease/FTD, Control	yes	Included dataset; AD, PSP, and FTD/PiD analyzed as separate disease-vs-control units.
-GSE155114	GEO	CTE screened dataset	CTE, Control	no	Screened but not included in the inferential analysis set.
-GSE261807	GEO	CTE screened dataset	CTE, Control	no	Screened but not included in the inferential analysis set.
+﻿accession	repository	region	disease_groups	analysis_status	notes
+GSE157827	GEO	PFC	AD, Control	inferentially_eligible	Included raw-count dataset reprocessed in this study and harmonized to six major cell classes.
+GSE174367	GEO	PFC	AD, Control	inferentially_eligible	Included raw-count dataset reprocessed in this study and harmonized to six major cell classes.
+syn21788402	Synapse/AMP-AD	EC	AD, Control	descriptive_only_n3v3	Author-provided public SCE object; EC has n = 3 vs 3 and is retained as descriptive only.
+syn21788402	Synapse/AMP-AD	SFG	AD, Control	descriptive_only_n3v3	Author-provided public SCE object; SFG has n = 3 vs 3 and is retained as descriptive only.
+syn52082747	Synapse/AMP-AD	V1	AD, FTD/PiD, PSP, Control	inferentially_eligible	Author-processed public object; final Route C analysis resolves V1, insula and preCG as separate disease-region analytical units.
+syn52082747	Synapse/AMP-AD	insula	AD, FTD/PiD, PSP, Control	inferentially_eligible	Author-processed public object; final Route C analysis resolves V1, insula and preCG as separate disease-region analytical units.
+syn52082747	Synapse/AMP-AD	preCG	AD, FTD/PiD, PSP, Control	inferentially_eligible	Author-processed public object; final Route C analysis resolves V1, insula and preCG as separate disease-region analytical units.
+GSE155114	GEO	CTE screened dataset	CTE, Control	not_retained	Screened but not retained because it did not meet the final comparability/metadata requirements.
+GSE261807	GEO	CTE screened dataset	CTE, Control	not_retained	Screened but not retained because it did not meet the final comparability/metadata requirements.

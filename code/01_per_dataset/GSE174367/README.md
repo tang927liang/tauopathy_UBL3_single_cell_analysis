@@ -1,4 +1,4 @@
-# GSE174367 Reproduction to `stepH_obj_celltype6_named.rds`
+﻿# GSE174367 Reproduction to `stepH_obj_celltype6_named.rds`
 
 This folder contains the minimal reproducible code for regenerating the upstream
 GSE174367 Seurat object used in the manuscript:
@@ -46,7 +46,7 @@ outputs are the cell-level annotations and cell-type counts listed below.
 From the repository root:
 
 ```r
-source("reproduce_GSE174367_stepH_obj_celltype6_named.R")
+source("01_GSE174367_rebuild_stepH_celltype6.R")
 ```
 
 By default, outputs are written to:
@@ -60,7 +60,7 @@ You can override input and output paths before running:
 ```r
 Sys.setenv(GSE174367_RAW_DIR = "D:/path/to/GSE174367")
 Sys.setenv(GSE174367_OUT_DIR = "D:/path/to/output")
-source("reproduce_GSE174367_stepH_obj_celltype6_named.R")
+source("01_GSE174367_rebuild_stepH_celltype6.R")
 ```
 
 The final output will be:
@@ -97,7 +97,7 @@ Peri 342 + Endo 152 = Endothelial 494
 expected_tables/stepH_celltype6_counts_percent_GSE174367.csv
 expected_tables/stepH_cluster_label_map_GSE174367.csv
 expected_tables/verification_stepH_vs_historical.txt
-stepH_celltype6_done_sessionInfo.txt
+sessionInfo.txt
 ```
 
 `verification_stepH_vs_historical.txt` documents that the regenerated object in
@@ -108,5 +108,8 @@ cell order, cluster counts, sample-by-celltype counts, and cell-level
 ## Notes on Large Files
 
 Do not commit generated `.rds` checkpoint files to ordinary Git. They are large
-and should be deposited in Zenodo, Figshare, Synapse, or Git LFS if they need to
-be shared directly.
+intermediate objects and are not planned for Zenodo deposition because they can
+be regenerated from public inputs using this script. Deposit them in Zenodo,
+Figshare, Synapse, or Git LFS only if reviewers specifically request direct
+analysis-ready objects.
+

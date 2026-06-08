@@ -1,4 +1,4 @@
-rm(list = ls())
+﻿rm(list = ls())
 gc()
 Sys.setenv(LANG = "en")
 options(stringsAsFactors = FALSE, scipen = 999)
@@ -17,7 +17,7 @@ suppressPackageStartupMessages({
 
 project_dir <- "D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747"
 script_path <- file.path(project_dir, "R",
-                         "make_syn52082747_stepH_slim_uncompressed_3regions_full_seurat.R")
+                         "01_syn52082747_rebuild_stepH_3regions_full_seurat.R")
 source_stepH <- file.path(project_dir, "results", "NO3", "stepH_slim_uncompressed.rds")
 out_dir <- file.path(project_dir, "results", "3regions")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
@@ -236,3 +236,4 @@ message("size_GB: ", round(file.info(full_rds)$size / 1024^3, 3))
 print(object_summary)
 print(cell_counts)
 print(donor_counts)
+
