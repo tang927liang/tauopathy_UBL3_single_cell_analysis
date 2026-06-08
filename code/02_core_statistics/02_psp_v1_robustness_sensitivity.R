@@ -11,15 +11,31 @@ rm(list = ls()); gc()
 Sys.setenv(LANG = "en")
 options(stringsAsFactors = FALSE)
 
+r_lib <- Sys.getenv("UBL3_R_LIB", unset = "D:/R_lib_clean")
+if (nzchar(r_lib) && dir.exists(r_lib)) {
+  .libPaths(c(r_lib, .libPaths()))
+}
+
 suppressPackageStartupMessages({
   library(openxlsx)
 })
 
-base_dir <- "D:/RNA/2026063Molecular Neurodegeneration"
-fig4_dir <- file.path(base_dir, "Figure4", "results", "RouteC_20260606_v26_2x2_axis_title_spacing")
-out_dir  <- file.path(base_dir, "Supplementary_Table_S2", "results", "RouteC_20260606_robustness_sensitivity_aligned_to_Fig4_v26")
-script_dir <- file.path(base_dir, "Supplementary_Table_S2", "R")
+env_path <- function(name, default) {
+  value <- Sys.getenv(name, unset = "")
+  if (nzchar(value)) normalizePath(value, winslash = "/", mustWork = FALSE) else default
+}
+base_dir <- env_path("UBL3_ROUTE_C_BASE_DIR", "D:/RNA/2026063Molecular Neurodegeneration")
+fig4_dir <- env_path(
+  "UBL3_FIG4_SOURCE_DIR",
+  file.path(base_dir, "Figure4", "results", "RouteC_20260606_v26_2x2_axis_title_spacing")
+)
+out_dir <- env_path(
+  "UBL3_SUPPTABLE_S2_OUT_DIR",
+  file.path(base_dir, "Supplementary_Table_S2", "results", "RouteC_20260606_robustness_sensitivity_aligned_to_Fig4_v26")
+)
+script_dir <- env_path("UBL3_SUPPTABLE_S2_SCRIPT_DIR", file.path(base_dir, "Supplementary_Table_S2", "R"))
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(script_dir, recursive = TRUE, showWarnings = FALSE)
 
 read_csv <- function(name) {
   path <- file.path(fig4_dir, name)

@@ -1,4 +1,5 @@
-﻿.libPaths(c("D:/R_lib_clean", .libPaths()))
+local_r_lib <- Sys.getenv("UBL3_R_LIB", unset = "D:/R_lib_clean")
+if (dir.exists(local_r_lib)) .libPaths(c(local_r_lib, .libPaths()))
 
 suppressPackageStartupMessages({
   library(Seurat)
@@ -10,7 +11,15 @@ suppressPackageStartupMessages({
 
 run_started <- Sys.time()
 
-base_out_dir <- "D:/RNA/2026063Molecular Neurodegeneration/Supplementary_Table_S1/results/RouteC_20260605_UBL3_donor_level"
+env_path <- function(name, default) {
+  value <- Sys.getenv(name, unset = "")
+  if (nzchar(value)) normalizePath(value, winslash = "/", mustWork = FALSE) else default
+}
+route_c_base_dir <- env_path("UBL3_ROUTE_C_BASE_DIR", "D:/RNA/2026063Molecular Neurodegeneration")
+base_out_dir <- env_path(
+  "UBL3_SUPPTABLE_S1_OUT_DIR",
+  file.path(route_c_base_dir, "Supplementary_Table_S1", "results", "RouteC_20260605_UBL3_donor_level")
+)
 make_safe_out_dir <- function(path) {
   if (!dir.exists(path)) {
     dir.create(path, recursive = TRUE, showWarnings = FALSE)
@@ -33,11 +42,11 @@ source_paths <- data.table(
   source_key = c("GSE157827", "GSE174367", "syn21788402_EC", "syn21788402_SFG", "syn52082747"),
   dataset = c("GSE157827", "GSE174367", "syn21788402", "syn21788402", "syn52082747"),
   rds_path = c(
-    "D:/RNA/UBL3_AD_Project/data/sn_scRNA/GSE157827/results/stepH_obj_celltype6_named.rds",
-    "D:/RNA/UBL3_AD_Project/data/sn_scRNA/GSE174367/results/stepH_obj_celltype6_named.rds",
-    "D:/RNA/UBL3_AD_Project/data/sn_scRNA/syn21788402/resultsmodify/stepH_syn21788402_EC_obj_labeled_celltype7_celltype6.rds",
-    "D:/RNA/UBL3_AD_Project/data/sn_scRNA/syn21788402/resultsmodify/stepH_syn21788402_SFG_obj_celltype6.rds",
-    "D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds"
+    env_path("UBL3_GSE157827_RDS", "D:/RNA/UBL3_AD_Project/data/sn_scRNA/GSE157827/results/stepH_obj_celltype6_named.rds"),
+    env_path("UBL3_GSE174367_RDS", "D:/RNA/UBL3_AD_Project/data/sn_scRNA/GSE174367/results/stepH_obj_celltype6_named.rds"),
+    env_path("UBL3_SYN21788402_EC_RDS", "D:/RNA/UBL3_AD_Project/data/sn_scRNA/syn21788402/resultsmodify/stepH_syn21788402_EC_obj_labeled_celltype7_celltype6.rds"),
+    env_path("UBL3_SYN21788402_SFG_RDS", "D:/RNA/UBL3_AD_Project/data/sn_scRNA/syn21788402/resultsmodify/stepH_syn21788402_SFG_obj_celltype6.rds"),
+    env_path("UBL3_SYN52082747_3REGIONS_RDS", "D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds")
   )
 )
 

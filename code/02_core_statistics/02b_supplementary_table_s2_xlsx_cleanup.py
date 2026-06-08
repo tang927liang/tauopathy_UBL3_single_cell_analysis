@@ -5,9 +5,19 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
 
-base_dir = r"D:\RNA\2026063Molecular Neurodegeneration"
-fig4_dir = os.path.join(base_dir, "Figure4", "results", "RouteC_20260606_v26_2x2_axis_title_spacing")
-out_dir = os.path.join(base_dir, "Supplementary_Table_S2", "results", "RouteC_20260606_robustness_sensitivity_aligned_to_Fig4_v26")
+def env_path(name, default):
+    value = os.environ.get(name, "")
+    return value if value else default
+
+base_dir = env_path("UBL3_ROUTE_C_BASE_DIR", r"D:\RNA\2026063Molecular Neurodegeneration")
+fig4_dir = env_path(
+    "UBL3_FIG4_SOURCE_DIR",
+    os.path.join(base_dir, "Figure4", "results", "RouteC_20260606_v26_2x2_axis_title_spacing")
+)
+out_dir = env_path(
+    "UBL3_SUPPTABLE_S2_OUT_DIR",
+    os.path.join(base_dir, "Supplementary_Table_S2", "results", "RouteC_20260606_robustness_sensitivity_aligned_to_Fig4_v26")
+)
 os.makedirs(out_dir, exist_ok=True)
 
 def read_csv_dict(name):

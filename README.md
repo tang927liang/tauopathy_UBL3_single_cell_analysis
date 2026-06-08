@@ -1,4 +1,4 @@
-﻿# UBL3 tauopathy single-nucleus analysis: core reproducibility code
+# UBL3 tauopathy single-nucleus analysis: core reproducibility code
 
 This repository contains the stable core reproducibility code for a
 region-resolved donor-level re-analysis of public human cortical tauopathy
@@ -120,6 +120,39 @@ Supplementary Data 1 is too large for ordinary GitHub storage and should be
 provided through the manuscript data resource / Zenodo record described in the
 manuscript.
 
+## Local path configuration
+
+The scripts keep the author's Windows paths as defaults so that the archived
+submission run can be reproduced on the originating workstation. On another
+computer, set the environment variables below before running the scripts, or
+edit the corresponding variables near the top of each script.
+
+Required processed-object paths for `code/02_core_statistics/`:
+
+```powershell
+$env:UBL3_GSE157827_RDS="D:/your_project/processed/GSE157827_stepH_obj_celltype6_named.rds"
+$env:UBL3_GSE174367_RDS="D:/your_project/processed/GSE174367_stepH_obj_celltype6_named.rds"
+$env:UBL3_SYN21788402_EC_RDS="D:/your_project/processed/stepH_syn21788402_EC_obj_labeled_celltype7_celltype6.rds"
+$env:UBL3_SYN21788402_SFG_RDS="D:/your_project/processed/stepH_syn21788402_SFG_obj_celltype6.rds"
+$env:UBL3_SYN52082747_3REGIONS_RDS="D:/your_project/processed/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds"
+```
+
+Optional output and library paths:
+
+```powershell
+$env:UBL3_ROUTE_C_BASE_DIR="D:/your_project/RouteC_outputs"
+$env:UBL3_R_LIB="D:/your_R_library"
+$env:UBL3_SUPPTABLE_S1_OUT_DIR="D:/your_project/RouteC_outputs/Supplementary_Table_S1/results"
+$env:UBL3_SUPPTABLE_S2_OUT_DIR="D:/your_project/RouteC_outputs/Supplementary_Table_S2/results"
+$env:UBL3_SUPPDATA1_OUT_DIR="D:/your_project/RouteC_outputs/Supplementary_Data_1/results"
+$env:UBL3_FIG4_SOURCE_DIR="D:/your_project/Figure4/source_tables"
+```
+
+The large processed Seurat objects are not included in GitHub. They can be
+regenerated with `code/01_per_dataset/` or supplied locally by setting the RDS
+path variables above. The journal-formatted figure layout scripts are separate
+from this stable core archive; the core scripts generate the numerical source
+tables used by the manuscript figures and supplementary files.
 ## Reproducibility notes
 
 - Random seeds are declared in each script.

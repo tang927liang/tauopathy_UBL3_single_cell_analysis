@@ -1,4 +1,4 @@
-﻿# Core statistical analysis scripts
+# Core statistical analysis scripts
 
 This folder contains the stable Route C analysis code for the UBL3 tauopathy
 single-nucleus RNA-seq manuscript. These scripts generate the numerical source
@@ -26,6 +26,42 @@ do not require rewriting the core analysis archive.
   - Generates the complete donor-level pseudobulk DESeq2 output deposited as
     Supplementary Data 1 / data-resource output.
 
+## Local path configuration for external reruns
+
+The R scripts retain the author's original Windows paths as defaults, but every
+large input/output path used by `code/02_core_statistics/` can be redirected with
+environment variables. Set these before running the scripts on another computer:
+
+```powershell
+$env:UBL3_GSE157827_RDS="D:/your_project/processed/GSE157827_stepH_obj_celltype6_named.rds"
+$env:UBL3_GSE174367_RDS="D:/your_project/processed/GSE174367_stepH_obj_celltype6_named.rds"
+$env:UBL3_SYN21788402_EC_RDS="D:/your_project/processed/stepH_syn21788402_EC_obj_labeled_celltype7_celltype6.rds"
+$env:UBL3_SYN21788402_SFG_RDS="D:/your_project/processed/stepH_syn21788402_SFG_obj_celltype6.rds"
+$env:UBL3_SYN52082747_3REGIONS_RDS="D:/your_project/processed/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds"
+$env:UBL3_ROUTE_C_BASE_DIR="D:/your_project/RouteC_outputs"
+$env:UBL3_R_LIB="D:/your_R_library"
+```
+
+Additional optional output redirection variables are available for individual
+workbooks:
+
+```powershell
+$env:UBL3_SUPPTABLE_S1_OUT_DIR="D:/your_project/RouteC_outputs/Supplementary_Table_S1/results"
+$env:UBL3_SUPPTABLE_S2_OUT_DIR="D:/your_project/RouteC_outputs/Supplementary_Table_S2/results"
+$env:UBL3_SUPPDATA1_OUT_DIR="D:/your_project/RouteC_outputs/Supplementary_Data_1/results"
+$env:UBL3_FIG4_SOURCE_DIR="D:/your_project/Figure4/source_tables"
+```
+
+Example:
+
+```powershell
+Rscript --vanilla code/02_core_statistics/01_ubl3_donor_level_endpoints.R
+```
+
+If no environment variables are set, the scripts use the archived local paths
+from the submitting workstation. This is intentional for provenance, but external
+users should point the variables above to their own regenerated or downloaded
+processed objects.
 ## What is intentionally not included here
 
 Final journal-formatted figure layout scripts are not part of this stable core
