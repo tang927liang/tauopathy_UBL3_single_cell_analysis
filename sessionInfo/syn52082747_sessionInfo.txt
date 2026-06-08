@@ -1,4 +1,4 @@
-﻿syn52082747 region-resolved full-Seurat StepH reconstruction
+syn52082747 region-resolved full-Seurat reconstruction
 GitHub-facing sessionInfo file
 
 Main script:
@@ -7,36 +7,19 @@ Main script:
 Main output:
   D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds
 
-This sessionInfo corresponds to the final three-region full Seurat object used for downstream Figure 2 and Supplementary Figure S3. It replaces the older single-region StepH session record.
-=== Time ===
-[1] "2026-06-04 22:24:18 JST"
+Source inputs:
+  D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/rawdata/NO2_step7_obj_original_backup.rds
+  D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/rawdata/liger_subcluster_metadata_v2.csv
 
-=== Script ===
-D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/R/01_syn52082747_rebuild_stepH_3regions_full_seurat.R 
+This sessionInfo corresponds to the final three-region full Seurat object used for downstream Figure 2 and Supplementary Figure S3. The GitHub reconstruction script builds the object directly from the author-processed public object and source metadata; it does not require the local historical NO3 StepH RDS.
 
-=== Source/output ===
-           metric
-1    source_stepH
-2      output_rds
-3         n_genes
-4         n_cells
-5          assays
-6      reductions
-7   default_assay
-8  has_RNA_counts
-9        has_umap
-10       ubl3_row
-                                                                                                                           value
-1                                        D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/NO3/stepH_slim_uncompressed.rds
-2  D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds
-3                                                                                                                          30309
-4                                                                                                                         590224
-5                                                                                                                            RNA
-6                                                                                                                  pca;tsne;umap
-7                                                                                                                            RNA
-8                                                                                                                           TRUE
-9                                                                                                                           TRUE
-10                                                                                                                          UBL3
+Verified output contract:
+  Genes: 30,309
+  Cells retained: 590,224
+  Assay: RNA
+  Reductions: pca, tsne, umap
+  UBL3 row: UBL3
+  R / Seurat: 4.5.3 / 5.4.0
 
 === sessionInfo ===
 R version 4.5.3 (2026-03-11 ucrt)

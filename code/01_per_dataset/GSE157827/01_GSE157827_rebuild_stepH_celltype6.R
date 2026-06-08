@@ -1,4 +1,5 @@
-﻿# GSE157827 upstream pipeline to stepH_obj_celltype6_named.rds.
+# GSE157827 upstream pipeline to stepH_obj_celltype6_named.rds.
+# Final Route C analytical unit label: GSE157827 (AD), PFC.
 #
 # This is a single-file, GitHub-ready version of the upstream workflow used to
 # regenerate the manuscript object:

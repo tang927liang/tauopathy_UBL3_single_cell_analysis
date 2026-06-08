@@ -1,47 +1,35 @@
-﻿# syn52082747 region-resolved StepH reconstruction
+# syn52082747 region-resolved upstream reconstruction
 
 This folder contains the syn52082747 dataset-level upstream code used in the final Route C analysis of the UBL3 tauopathy single-nucleus RNA-seq study.
 
-The original manuscript used syn52082747 as a single V1 analytical unit. In the final region-resolved analysis, syn52082747 is split into three cortical regions: V1, insula, and preCG. The GitHub-facing documentation and session record in this folder therefore correspond to the three-region version, not to the older pooled/single-region reconstruction.
+The final manuscript treats syn52082747 as a region-resolved dataset with three cortical regions: V1, insula, and preCG. This GitHub-facing documentation therefore corresponds to the three-region version, not to the older pooled/single-region reconstruction.
 
 ## Main script for the final analysis
 
 - `01_syn52082747_rebuild_stepH_3regions_full_seurat.R`
 
-This is the script to cite as the main syn52082747 upstream reconstruction for the final manuscript. It reads the historical syn52082747 StepH Seurat object, preserves the RNA assay, counts/data matrices and UMAP reduction, normalizes source region labels to the Route C region labels, and writes a full region-resolved Seurat object:
+This is the script to cite as the main syn52082747 upstream reconstruction for the final manuscript. It directly reads the public author-processed Seurat object and accompanying source metadata, reconstructs the six major cell classes, normalizes source region labels to Route C region labels, computes UBL3 metadata, and writes the final full region-resolved Seurat object.
 
 ```text
 D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds
 ```
 
-The full Seurat object is the required downstream input for Figure 2 and Supplementary Figure S3 because those figures need UMAP coordinates, marker expression, cell-type labels and UBL3 expression metadata.
-
-## Auxiliary script
-
-- `make_syn52082747_stepH_slim_uncompressed_3regions_fused.R`
-
-This older companion script reconstructs the historical StepH object and appends a Route C three-region donor-level source-data block. It is useful for auditing donor-level UBL3 detection-breadth source tables and the compact source object:
-
-```text
-D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions/syn52082747_3regions_routeC_source.rds
-```
-
-It should not be used as the sole final Figure 2 / Supplementary Figure S3 input, because the compact Route C source object does not replace the full Seurat object needed for UMAP and marker-expression plotting.
-
-## Input files expected on disk
-
-The final full-Seurat script expects the already reconstructed syn52082747 StepH object at:
+The script no longer requires the local historical intermediate:
 
 ```text
 D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/NO3/stepH_slim_uncompressed.rds
 ```
 
-The auxiliary fused script can also regenerate that StepH object from the author-processed inputs when they are present:
+That historical RDS may exist locally, but it is not an input to the GitHub reconstruction script.
+
+## Input files expected on disk
 
 ```text
 D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/rawdata/NO2_step7_obj_original_backup.rds
 D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/rawdata/liger_subcluster_metadata_v2.csv
 ```
+
+The input object is the author-processed public Seurat object. The metadata CSV supplies donor, diagnosis, sample and region labels. This level of reconstruction is appropriate for this dataset because the original publication supplied processed single-nucleus objects rather than a raw FASTQ-to-cell-calling workflow intended for reprocessing by downstream users.
 
 ## Region convention
 
@@ -58,14 +46,15 @@ Figure and manuscript text should use `V1`, `insula`, and `preCG` consistently. 
 ## Retained object summary from the successful full-Seurat run
 
 ```text
-Source StepH object: D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/NO3/stepH_slim_uncompressed.rds
-Output RDS:          D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds
-Genes:               30,309
-Cells retained:      590,224
-Assay:               RNA
-Reductions:          pca, tsne, umap
-UBL3 row:            UBL3
-R / Seurat:          4.5.3 / 5.4.0
+Source author object: D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/rawdata/NO2_step7_obj_original_backup.rds
+Source metadata:      D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/rawdata/liger_subcluster_metadata_v2.csv
+Output RDS:           D:/RNA/UBL3_PiD_Project/data/sn_RNA/syn52082747/results/3regions/syn52082747_3regions_stepH_slim_uncompressed_full_seurat.rds
+Genes:                30,309
+Cells retained:       590,224
+Assay:                RNA
+Reductions:           pca, tsne, umap
+UBL3 row:             UBL3
+R / Seurat:           4.5.3 / 5.4.0
 ```
 
 The retained donor counts by disease and region were:
@@ -77,7 +66,7 @@ FTD/PiD: V1 n=6,  insula n=9,  preCG n=8
 PSP:     V1 n=6,  insula n=10, preCG n=10
 ```
 
-## Output files generated by the final full-Seurat script
+## Output files generated by the script
 
 Run-specific files are written to:
 
@@ -97,16 +86,28 @@ syn52082747_3regions_full_seurat_cell_counts_by_disease_region_celltype.csv
 syn52082747_3regions_full_seurat_donor_counts_by_disease_region.csv
 ```
 
+## Overwrite safety
+
+The script refuses to overwrite an existing final RDS by default. To intentionally regenerate the full object, set:
+
+```text
+ALLOW_OVERWRITE=1
+```
+
+When overwrite is enabled, the existing RDS is renamed to a timestamped backup before the new file is moved into place.
+
 ## Which README/sessionInfo is authoritative?
 
 For GitHub, use this `README.md` and `sessionInfo.txt`.
 
-In the local results folder, the two README/sessionInfo pairs have different meanings:
+In the local results folder, the `full_seurat` README/sessionInfo pair is the one that matches the final upstream RDS for manuscript figure generation:
 
-- `README_syn52082747_3regions_full_seurat.txt` and `sessionInfo_syn52082747_3regions_full_seurat.txt` document the final full-Seurat object used by downstream Figure 2 and Supplementary Figure S3.
-- `README_syn52082747_3regions.txt` and `sessionInfo_syn52082747_3regions.txt` document the earlier compact Route C source object and donor-level summary CSVs.
+```text
+README_syn52082747_3regions_full_seurat.txt
+sessionInfo_syn52082747_3regions_full_seurat.txt
+```
 
-Thus, the `full_seurat` README/sessionInfo pair is the one that matches the final upstream RDS for manuscript figure generation.
+Earlier compact Route C source-object files may be present locally, but they are not the final Figure 2 / Supplementary Figure S3 input because they do not replace the full Seurat object needed for UMAP and marker-expression plotting.
 
 ## Data availability note
 

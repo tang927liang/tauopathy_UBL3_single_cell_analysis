@@ -5,6 +5,8 @@ manuscript-ready Seurat object:
 
 `stepH_obj_celltype6_named.rds`
 
+Analytical unit in the final Route C manuscript: `GSE157827 (AD), PFC`.
+
 The script follows the original manuscript parameters for GSE157827 preprocessing,
 CCA integration, PCA/UMAP/clustering, and final six-cell-type annotation.
 
